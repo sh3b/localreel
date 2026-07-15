@@ -27,10 +27,23 @@ ignore = [
     "E501",  # line length (handled by ruff format)
 ]
 
+[tool.mypy]
+strict = true
+files = ["src", "tests"]
+
+# Tests are still checked, but don't require annotations everywhere
+# (e.g. -> None on every test) and may call untyped libs like factory-boy.
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_untyped_calls = false
+
 [dependency-groups]
 dev = [
     "factory-boy>=3.3.3",
+    "mypy>=2.3.0",
     "pre-commit>=4.0",
     "pytest>=9.1.1",
     "ruff>=0.9",
+    "types-factory-boy>=0.4.1",
 ]
