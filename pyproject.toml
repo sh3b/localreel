@@ -11,8 +11,26 @@ package = false
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
 
+[tool.ruff]
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line length (handled by ruff format)
+]
+
 [dependency-groups]
 dev = [
     "factory-boy>=3.3.3",
+    "pre-commit>=4.0",
     "pytest>=9.1.1",
+    "ruff>=0.9",
 ]
