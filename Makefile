@@ -1,6 +1,6 @@
 export PYTHONPATH := src
 
-.PHONY: install test lint format
+.PHONY: install test lint format typecheck
 
 install:
 	uv sync
@@ -11,6 +11,9 @@ test:
 
 lint:
 	uv run ruff check src tests
+
+typecheck:
+	uv run mypy
 
 format:
 	uv run ruff format src tests
