@@ -38,6 +38,8 @@ ignore = [
 [tool.mypy]
 strict = true
 files = ["src", "tests"]
+# Teaches mypy that BaseSettings fields come from the environment.
+plugins = ["pydantic.mypy"]
 
 # Tests are still checked, but don't require annotations everywhere
 # (e.g. -> None on every test) and may call untyped libs like factory-boy.
