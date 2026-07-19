@@ -3,7 +3,7 @@ export PYTHONPATH := src
 -include .env
 export
 
-.PHONY: install test lint format typecheck migration migrate db db-reset
+.PHONY: install test check format typecheck migration migrate db db-reset db-logs
 
 install:
 	uv sync
@@ -12,8 +12,8 @@ install:
 test:
 	uv run pytest
 
-lint:
-	uv run ruff check src tests
+
+check: format typecheck
 
 typecheck:
 	uv run mypy
@@ -23,9 +23,10 @@ format:
 	uv run ruff check --fix src tests
 
 db:
-	docker run --name localreel-db --rm -d -p 5432:5432 \
-		-e POSTGRES_USER=localreel -e POSTGRES_PASSWORD=localreel -e POSTGRES_DB=localreel \
-		postgres:18-alpine
+	docker compose up -d db
+
+db-logs:
+	docker compose logs -f db
 
 db-reset:
 	docker exec localreel-db dropdb -U $(DB_USER) --if-exists --force $(DB_NAME)

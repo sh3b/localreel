@@ -1,0 +1,11 @@
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: localreel-db
+    ports:
+      - "${DB_PORT}:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    command: -c log_statement=${DB_LOG_STATEMENT:-none}
