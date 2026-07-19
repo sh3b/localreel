@@ -3,6 +3,7 @@ import logging
 from sqlalchemy import create_engine, pool
 
 from alembic import context
+from localreel.adapters import orm
 from localreel.settings import Settings
 
 config = context.config
@@ -11,7 +12,7 @@ logging.basicConfig(
     level=logging.INFO, format="%(levelname)-5.5s [%(name)s] %(message)s"
 )
 
-target_metadata = None
+target_metadata = orm.Base.metadata
 
 db_url = Settings().db_url
 
