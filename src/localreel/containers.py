@@ -24,7 +24,7 @@ class Container(containers.DeclarativeContainer):
     message_bus = providers.Factory(
         MessageBus,
         command_handlers=providers.Dict(
-            {SubmitURL: providers.Factory(SubmitURLHandler)}
+            {SubmitURL: providers.Factory(SubmitURLHandler, uow=uow)}
         ),
         event_handlers=providers.Dict(
             {VideoCreated: providers.List(providers.Factory(AddVideoHandler, uow=uow))}

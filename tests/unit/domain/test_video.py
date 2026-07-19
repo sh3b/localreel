@@ -5,7 +5,7 @@ import pytest
 from localreel.domain.events import VideoCreated
 from localreel.domain.exceptions import UnsupportedSource
 from localreel.domain.models.video import Video
-from localreel.domain.types import VideoSource, VideoStatus
+from localreel.domain.value_objects import VideoSource, VideoStatus
 
 
 class TestCreate:
@@ -17,6 +17,7 @@ class TestCreate:
         assert video.id == video_id
         assert video.source is VideoSource.YOUTUBE
         assert video.source_url == "https://youtu.be/jNQXAC9IVRw"
+        assert video.source_key == "youtube:jNQXAC9IVRw"
         assert video.status is VideoStatus.PENDING
 
     def test_registers_that_it_was_created(self) -> None:

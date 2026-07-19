@@ -1,7 +1,7 @@
 import pytest
 
 from localreel.domain.exceptions import UnsupportedSource
-from localreel.domain.types import VideoSource
+from localreel.domain.value_objects import SourceURL, VideoSource
 
 
 class TestVideoSourceFromUrl:
@@ -49,3 +49,56 @@ class TestVideoSourceFromUrl:
     def test_rejects_urls_not_on_a_supported_host(self, url: str) -> None:
         with pytest.raises(UnsupportedSource):
             VideoSource.from_url(url)
+
+
+class TestSourceURLKey:
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+            "https://youtu.be/jNQXAC9IVRw",
+            "https://youtu.be/jNQXAC9IVRw?si=abc123",
+            "https://m.youtube.com/watch?v=jNQXAC9IVRw&t=42s",
+            "https://music.youtube.com/watch?v=jNQXAC9IVRw",
+            "https://www.youtube.com/shorts/jNQXAC9IVRw",
+            "https://www.youtube.com/live/jNQXAC9IVRw",
+            "https://www.youtube-nocookie.com/embed/jNQXAC9IVRw",
+        ],
+    )
+    def test_youtube_forms_share_one_key(self, url: str) -> None:
+        assert SourceURL.parse(url).key == "youtube:jNQXAC9IVRw"
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://www.youtube.com/@jawed",
+            "https://www.youtube.com/playlist?list=PL123",
+            "https://www.youtube.com/watch",
+            "https://www.youtube.com/watch?v=short",
+            "https://youtu.be/",
+        ],
+    )
+    def test_rejects_youtube_urls_that_are_not_one_video(self, url: str) -> None:
+        with pytest.raises(UnsupportedSource):
+            SourceURL.parse(url)
+
+    @pytest.mark.parametrize(
+        ("url", "key"),
+        [
+            (
+                "http://www.TikTok.com/@user/video/123#top",
+                "https://tiktok.com/@user/video/123",
+            ),
+            (
+                "https://m.facebook.com/watch?v=123",
+                "https://facebook.com/watch?v=123",
+            ),
+        ],
+    )
+    def test_other_sources_key_on_the_cleaned_url(self, url: str, key: str) -> None:
+        assert SourceURL.parse(url).key == key
+
+    def test_keeps_the_url_as_submitted(self) -> None:
+        url = "https://youtu.be/jNQXAC9IVRw?si=abc123"
+
+        assert SourceURL.parse(url).url == url
