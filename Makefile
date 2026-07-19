@@ -1,6 +1,9 @@
 export PYTHONPATH := src
 
-.PHONY: install test lint format typecheck migration migrate db
+-include .env
+export
+
+.PHONY: install test lint format typecheck migration migrate db db-reset
 
 install:
 	uv sync
@@ -23,6 +26,11 @@ db:
 	docker run --name localreel-db --rm -d -p 5432:5432 \
 		-e POSTGRES_USER=localreel -e POSTGRES_PASSWORD=localreel -e POSTGRES_DB=localreel \
 		postgres:18-alpine
+
+db-reset:
+	docker exec localreel-db dropdb -U $(DB_USER) --if-exists --force $(DB_NAME)
+	docker exec localreel-db createdb -U $(DB_USER) $(DB_NAME)
+	$(MAKE) migrate
 
 migration:  ## usage: make migration m="add videos table"
 ifndef m
