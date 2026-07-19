@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Self-hosted short-form video platform"
 requires-python = ">=3.14.5"
 dependencies = [
+    "alembic>=1.18.5",
     "dependency-injector",
     "fastapi",
     "uvicorn[standard]",
@@ -51,3 +52,23 @@ dev = [
     "ruff>=0.9",
     "types-factory-boy>=0.4.1",
 ]
+
+
+[tool.alembic]
+# see https://alembic.sqlalchemy.org/en/latest/tutorial.html#editing-the-ini-file
+script_location = "%(here)s/src/alembic"
+file_template = "%%(year)d_%%(month).2d_%%(day).2d_%%(hour).2d_%%(minute).2d_%%(second).2d_%%(rev)s_%%(slug)s"
+prepend_sys_path = ["%(here)s/src"]
+timezone = "UTC"
+
+[[tool.alembic.post_write_hooks]]
+name = "ruff_format"
+type = "module"
+module = "ruff"
+options = "format REVISION_SCRIPT_FILENAME"
+
+[[tool.alembic.post_write_hooks]]
+name = "ruff_fix"
+type = "module"
+module = "ruff"
+options = "check --fix REVISION_SCRIPT_FILENAME"
