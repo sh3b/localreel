@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from localreel.domain.events import VideoCreated
 from localreel.domain.messages import Event
 from localreel.domain.types import VideoSource, VideoStatus
 
@@ -22,9 +23,11 @@ class Video:
 
     @classmethod
     def create(cls, *, id: UUID, source_url: str) -> Video:
-        return cls(
+        video = cls(
             id=id,
             source=VideoSource.from_url(source_url),
             source_url=source_url,
             status=VideoStatus.PENDING,
         )
+        video.events.append(VideoCreated(video))
+        return video

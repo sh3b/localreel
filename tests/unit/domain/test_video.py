@@ -2,6 +2,7 @@ from uuid import uuid7
 
 import pytest
 
+from localreel.domain.events import VideoCreated
 from localreel.domain.exceptions import UnsupportedSource
 from localreel.domain.models.video import Video
 from localreel.domain.types import VideoSource, VideoStatus
@@ -17,6 +18,11 @@ class TestCreate:
         assert video.source is VideoSource.YOUTUBE
         assert video.source_url == "https://youtu.be/jNQXAC9IVRw"
         assert video.status is VideoStatus.PENDING
+
+    def test_registers_that_it_was_created(self) -> None:
+        video = Video.create(id=uuid7(), source_url="https://youtu.be/jNQXAC9IVRw")
+
+        assert video.events == [VideoCreated(video)]
 
     def test_rejects_an_unsupported_url(self) -> None:
         with pytest.raises(UnsupportedSource):

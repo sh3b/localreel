@@ -1,0 +1,10 @@
+from localreel.domain.events import VideoCreated
+from localreel.domain.unit_of_work import AbstractUnitOfWork
+
+
+class AddVideoHandler:
+    def __init__(self, uow: AbstractUnitOfWork) -> None:
+        self._uow = uow
+
+    def __call__(self, event: VideoCreated) -> None:
+        self._uow.videos.add(event.video)
