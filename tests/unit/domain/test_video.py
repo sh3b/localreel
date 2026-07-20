@@ -240,3 +240,14 @@ class TestRemoveSourceFile:
 
         assert video.source_file_available is False
         assert video.events == [SourceFileRemoved(video_id=video.id)]
+
+
+class TestCollectEvents:
+    def test_returns_the_events_and_empties_the_list(self):
+        video = VideoFactory(clear_events=False)
+
+        events = video.collect_events()
+
+        assert events == [VideoIngested(video_id=video.id)]
+        assert video.events == []
+        assert video.collect_events() == []

@@ -191,3 +191,10 @@ class Video:
     def remove_source_file(self) -> None:
         self.source_file_available = False
         self.events.append(SourceFileRemoved(video_id=self.id))
+
+    def collect_events(self) -> list[Event]:
+        # Empty the list on handover, or the next handler holding this same
+        # object would deliver these events again.
+        events = self.events
+        self.events = []
+        return events
