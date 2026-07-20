@@ -41,3 +41,6 @@ endif
 
 migrate:
 	uv run alembic upgrade head
+
+api:
+	uv run uvicorn localreel.entrypoints.api.main:create_app --factory --reload

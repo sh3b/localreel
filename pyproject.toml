@@ -35,6 +35,11 @@ ignore = [
     "E501",  # line length (handled by ruff format)
 ]
 
+[tool.ruff.lint.flake8-bugbear]
+# Depends() in argument defaults is FastAPI's intended idiom, not the
+# mutable-default bug B008 exists to catch.
+extend-immutable-calls = ["fastapi.Depends"]
+
 [tool.mypy]
 strict = true
 files = ["src", "tests"]
@@ -49,6 +54,7 @@ disallow_untyped_calls = false
 [dependency-groups]
 dev = [
     "factory-boy>=3.3.3",
+    "httpx2>=2.7.0",
     "mypy>=2.3.0",
     "pre-commit>=4.0",
     "pytest>=9.1.1",

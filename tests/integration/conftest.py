@@ -20,6 +20,7 @@ def container() -> Iterator[Container]:
         )
     )
     yield container
+
     transaction.rollback()
     connection.close()
     container.engine().dispose()
