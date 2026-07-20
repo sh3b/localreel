@@ -3,7 +3,7 @@ export PYTHONPATH := src
 -include .env
 export
 
-.PHONY: install test lint format typecheck migration migrate db db-reset
+.PHONY: install test lint format typecheck migration migrate db db-reset api
 
 install:
 	uv sync
@@ -40,3 +40,6 @@ endif
 
 migrate:
 	uv run alembic upgrade head
+
+api:
+	uv run uvicorn localreel.entrypoints.api.main:create_app --factory --reload
