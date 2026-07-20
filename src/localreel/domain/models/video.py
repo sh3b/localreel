@@ -111,7 +111,7 @@ class Video:
             phash=None,
             score=0.0,
             view_count=0,
-            source_file_available=True,
+            source_file_available=False,
             error_message=None,
         )
         video.events.append(VideoIngested(video_id=id))
@@ -132,6 +132,7 @@ class Video:
     def mark_downloaded(self, original_path: str) -> None:
         self._transition(VideoStatus.DOWNLOADED)
         self.original_path = original_path
+        self.source_file_available = True
         self.events.append(VideoDownloaded(video_id=self.id))
 
     def mark_transcoding(self) -> None:

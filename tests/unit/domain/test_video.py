@@ -28,7 +28,7 @@ class TestCreate:
         assert video.visibility is VideoVisibility.PRIVATE
         assert video.tags == []
         assert video.view_count == 0
-        assert video.source_file_available is True
+        assert video.source_file_available is False
         assert video.error_message is None
 
     def test_emits_video_ingested(self):
@@ -48,6 +48,7 @@ class TestStatusTransitions:
         video.mark_downloaded("/media/orig/v.mp4")
         assert video.status is VideoStatus.DOWNLOADED  # type: ignore[comparison-overlap]
         assert video.original_path == "/media/orig/v.mp4"
+        assert video.source_file_available is True
 
         video.mark_transcoding()
         assert video.status is VideoStatus.TRANSCODING

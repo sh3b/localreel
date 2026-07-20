@@ -35,7 +35,7 @@ class TestPostgresVideoRepository:
         assert loaded.tags == []
         assert loaded.score == 0.0
         assert loaded.view_count == 0
-        assert loaded.source_file_available is True
+        assert loaded.source_file_available is False
         assert loaded.events == []
 
     def test_get_unknown_id_raises(self, session: Session) -> None:
