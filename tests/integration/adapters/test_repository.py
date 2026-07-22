@@ -1,10 +1,16 @@
 from uuid import uuid7
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from localreel.adapters.repository import PostgresVideoRepository
+from localreel.adapters import orm
+from localreel.adapters.repository import (
+    PostgresDownloadJobRepository,
+    PostgresVideoRepository,
+)
 from localreel.containers import Container
+from localreel.domain.entities.download_job import DownloadJob
 from localreel.domain.exceptions import VideoNotFound
 from localreel.domain.types import VideoStatus
 from tests.factories.video import VideoFactory
@@ -56,3 +62,19 @@ class TestPostgresVideoRepository:
         repository = PostgresVideoRepository(session)
 
         assert repository.get_by_source_url_hash("b" * 64) is None
+
+
+class TestPostgresDownloadJobRepository:
+    def test_add_persists_the_job(self, container: Container, session: Session) -> None:
+        repository = PostgresDownloadJobRepository(session)
+        job = DownloadJob(id=uuid7(), video_id=uuid7())
+        repository.add(job)
+        session.commit()
+
+        other_session = container.session_factory()()
+        row = other_session.execute(
+            select(orm.download_jobs).where(orm.download_jobs.c.id == job.id)
+        ).one()
+
+        assert row.id == job.id
+        assert row.video_id == job.video_id

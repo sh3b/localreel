@@ -2,11 +2,15 @@ from abc import ABC, abstractmethod
 from types import TracebackType
 from typing import Self
 
-from localreel.domain.abstractions.repository import AbstractVideoRepository
+from localreel.domain.abstractions.repository import (
+    AbstractDownloadJobRepository,
+    AbstractVideoRepository,
+)
 
 
 class AbstractUnitOfWork(ABC):
     videos: AbstractVideoRepository
+    download_jobs: AbstractDownloadJobRepository
 
     def __enter__(self) -> Self:
         return self
