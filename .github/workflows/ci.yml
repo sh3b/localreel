@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: localreel
+          POSTGRES_PASSWORD: localreel
+          POSTGRES_DB: localreel
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: localreel
+      DB_PASSWORD: localreel
+      DB_NAME: localreel
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          python-version-file: .python-version
+          enable-cache: true
+
+      - run: make sync-locked
+
+      - run: make lint
+      - run: make typecheck
+
+      - run: make migrate
+
+      - run: make cov

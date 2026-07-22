@@ -3,11 +3,14 @@ export PYTHONPATH := src
 -include .env
 export
 
-.PHONY: install test cov check format typecheck migration migrate db db-reset db-logs
+.PHONY: install sync-locked test cov check lint format typecheck migration migrate db db-reset db-logs
 
 install:
 	uv sync
 	uv run pre-commit install
+
+sync-locked:
+	uv sync --locked
 
 test:
 	uv run pytest
@@ -17,6 +20,10 @@ cov:
 
 
 check: format typecheck
+
+lint:
+	uv run ruff format --check src tests
+	uv run ruff check src tests
 
 typecheck:
 	uv run mypy
