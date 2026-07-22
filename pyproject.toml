@@ -19,6 +19,15 @@ package = false
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
 
+[tool.coverage.run]
+source = ["src"]
+
+[tool.coverage.report]
+skip_empty = true
+exclude_also = [
+    "raise NotImplementedError",
+]
+
 [tool.ruff]
 src = ["src", "tests"]
 
@@ -58,6 +67,7 @@ dev = [
     "mypy>=2.3.0",
     "pre-commit>=4.0",
     "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
     "ruff>=0.9",
     "types-factory-boy>=0.4.1",
 ]

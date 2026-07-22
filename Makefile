@@ -3,7 +3,7 @@ export PYTHONPATH := src
 -include .env
 export
 
-.PHONY: install test check format typecheck migration migrate db db-reset db-logs
+.PHONY: install test cov check format typecheck migration migrate db db-reset db-logs
 
 install:
 	uv sync
@@ -11,6 +11,9 @@ install:
 
 test:
 	uv run pytest
+
+cov:
+	uv run pytest --cov --cov-report=term-missing
 
 
 check: format typecheck
