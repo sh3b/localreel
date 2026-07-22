@@ -3,7 +3,7 @@ export PYTHONPATH := src
 -include .env
 export
 
-.PHONY: install test lint format typecheck migration migrate db db-reset api
+.PHONY: install test cov lint format typecheck migration migrate db db-reset api
 
 install:
 	uv sync
@@ -11,6 +11,9 @@ install:
 
 test:
 	uv run pytest
+
+cov:
+	uv run pytest --cov --cov-report=term-missing
 
 lint:
 	uv run ruff check src tests
