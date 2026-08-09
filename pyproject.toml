@@ -11,6 +11,7 @@ dependencies = [
     "pydantic-settings>=2.14.2",
     "sqlalchemy>=2.0.51",
     "uvicorn[standard]",
+    "yt-dlp>=2026.7.4",
 ]
 
 [tool.uv]
@@ -59,6 +60,11 @@ files = ["src", "tests"]
 module = "tests.*"
 disallow_untyped_defs = false
 disallow_untyped_calls = false
+
+# yt-dlp ships no type information.
+[[tool.mypy.overrides]]
+module = "yt_dlp.*"
+ignore_missing_imports = true
 
 [dependency-groups]
 dev = [
