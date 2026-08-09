@@ -2,6 +2,7 @@ import logging
 
 from localreel.domain.commands import MarkFailed, MarkReady, StartDownload
 from localreel.domain.downloader import AbstractDownloader
+from localreel.domain.exceptions import InvalidStatusTransition
 from localreel.domain.unit_of_work import AbstractUnitOfWork
 from localreel.service_layer.message_bus import MessageBus
 
@@ -26,8 +27,12 @@ class DownloadService:
         if video is None:
             return False
 
-        with self._uow:
-            self._bus.handle(StartDownload(video_id=video.id))
+        try:
+            with self._uow:
+                self._bus.handle(StartDownload(video_id=video.id))
+        except InvalidStatusTransition:
+            logger.info("video %s was already taken", video.id)
+            return True
 
         command: MarkReady | MarkFailed
         try:

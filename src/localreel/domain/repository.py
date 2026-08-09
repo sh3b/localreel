@@ -15,8 +15,9 @@ class AbstractVideoRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get(self, video_id: UUID) -> Video:
-        """Raises VideoNotFound if no video has this id."""
+    def get(self, video_id: UUID, *, lock: bool) -> Video:
+        """Raises VideoNotFound if no video has this id. With lock, the row
+        stays locked until the unit of work ends."""
         raise NotImplementedError
 
     @abstractmethod

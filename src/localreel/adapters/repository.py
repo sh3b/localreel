@@ -38,8 +38,8 @@ class PostgresVideoRepository(AbstractVideoRepository):
                 ) from exc
             raise
 
-    def get(self, video_id: UUID) -> Video:
-        row = self._session.get(VideoORM, video_id)
+    def get(self, video_id: UUID, *, lock: bool) -> Video:
+        row = self._session.get(VideoORM, video_id, with_for_update=lock)
         if row is None:
             raise VideoNotFound(f"Video {video_id} not found")
         return self._to_domain(row)

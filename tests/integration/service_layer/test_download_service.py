@@ -1,9 +1,12 @@
 from uuid import UUID
 
+import pytest
 from sqlalchemy.orm import Session
 
 from localreel.adapters.orm import VideoORM
+from localreel.adapters.repository import PostgresVideoRepository
 from localreel.containers import Container
+from localreel.domain.commands import StartDownload
 from localreel.domain.downloader import AbstractDownloader
 from localreel.domain.value_objects import VideoStatus
 from localreel.service_layer.download_service import DownloadService
@@ -48,6 +51,26 @@ class TestDownloadService:
         row = session.get_one(VideoORM, video_id)
         assert row.status is VideoStatus.FAILED
         assert row.error == "Video unavailable"
+
+    def test_skips_a_video_another_worker_already_took(
+        self,
+        container: Container,
+        session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        video = VideoFactory.build()
+        with container.uow() as uow:
+            uow.videos.add(video)
+        with container.uow():
+            container.message_bus().handle(StartDownload(video_id=video.id))
+        monkeypatch.setattr(PostgresVideoRepository, "next_pending", lambda _: video)
+        downloader = FakeDownloader()
+
+        did_work = self._service(container, downloader).download_next()
+
+        assert did_work is True
+        assert downloader.downloaded == []
+        assert session.get_one(VideoORM, video.id).status is VideoStatus.DOWNLOADING
 
     def test_does_nothing_without_pending_videos(self, container: Container) -> None:
         downloader = FakeDownloader()

@@ -48,7 +48,7 @@ class TestPostgresVideoRepository:
         video = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
         repository.add(video)
 
-        loaded = repository.get(video.id)
+        loaded = repository.get(video.id, lock=False)
 
         assert loaded.id == video.id
         assert loaded.source_key == "youtube:jNQXAC9IVRw"
@@ -58,7 +58,7 @@ class TestPostgresVideoRepository:
 
     def test_get_raises_for_an_unknown_id(self, session: Session) -> None:
         with pytest.raises(VideoNotFound):
-            PostgresVideoRepository(session).get(uuid7())
+            PostgresVideoRepository(session).get(uuid7(), lock=False)
 
     def test_save_writes_the_changes(
         self, session: Session, session_factory: sessionmaker[Session]
