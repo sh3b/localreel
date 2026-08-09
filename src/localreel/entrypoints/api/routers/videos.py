@@ -2,16 +2,12 @@ from typing import Literal
 from uuid import UUID
 
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 
 from localreel.containers import Container
 from localreel.domain.abstractions.unit_of_work import AbstractUnitOfWork
 from localreel.domain.commands import RetryVideo, SubmitURL
-from localreel.domain.exceptions import (
-    InvalidStatusTransition,
-    UnsupportedSource,
-    VideoNotFound,
-)
+from localreel.domain.exceptions import UnsupportedSource
 from localreel.domain.types import VideoStatus
 from localreel.entrypoints.api.schemas.videos import (
     SubmitResult,
@@ -34,12 +30,7 @@ def submit_url(
 ) -> None:
     command = SubmitURL(url=body.url, user_id=body.user_id, visibility=body.visibility)
     with uow:
-        try:
-            bus.handle(command)
-        except UnsupportedSource as exc:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
-            ) from exc
+        bus.handle(command)
 
 
 @router.get("/videos")
@@ -110,14 +101,5 @@ def retry(
     bus: MessageBus = Depends(Provide[Container.message_bus]),
     uow: AbstractUnitOfWork = Depends(Provide[Container.uow]),
 ) -> None:
-    try:
-        with uow:
-            bus.handle(RetryVideo(video_id=video_id))
-    except VideoNotFound as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
-    except InvalidStatusTransition as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
-        ) from exc
+    with uow:
+        bus.handle(RetryVideo(video_id=video_id))
