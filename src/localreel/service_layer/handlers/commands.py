@@ -3,7 +3,7 @@ import logging
 from uuid import uuid7
 
 from localreel.domain.abstractions.unit_of_work import AbstractUnitOfWork
-from localreel.domain.commands import SubmitURL
+from localreel.domain.commands import MarkDownloaded, MarkFailed, SubmitURL
 from localreel.domain.messages import Event
 from localreel.domain.models.video import Video
 from localreel.domain.types import VideoSource
@@ -34,3 +34,23 @@ class SubmitURLHandler:
     @staticmethod
     def _sha256(text: str) -> str:
         return hashlib.sha256(text.encode()).hexdigest()
+
+
+class MarkDownloadedHandler:
+    def __init__(self, uow: AbstractUnitOfWork) -> None:
+        self._uow = uow
+
+    def __call__(self, cmd: MarkDownloaded) -> list[Event]:
+        video = self._uow.videos.get(cmd.video_id)
+        video.mark_downloaded(cmd.original_path)
+        return video.collect_events()
+
+
+class MarkFailedHandler:
+    def __init__(self, uow: AbstractUnitOfWork) -> None:
+        self._uow = uow
+
+    def __call__(self, cmd: MarkFailed) -> list[Event]:
+        video = self._uow.videos.get(cmd.video_id)
+        video.mark_failed(cmd.reason)
+        return video.collect_events()

@@ -2,8 +2,9 @@ from dependency_injector import containers, providers
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from localreel.adapters.downloader import YtDlpDownloader
 from localreel.adapters.unit_of_work import PostgresUnitOfWork
-from localreel.domain.commands import SubmitURL
+from localreel.domain.commands import MarkDownloaded, MarkFailed, SubmitURL
 from localreel.domain.events import (
     SourceFileRemoved,
     TagsUpdated,
@@ -13,7 +14,10 @@ from localreel.domain.events import (
     VideoReady,
     WatchRecorded,
 )
+from localreel.service_layer.download import download_next_pending
 from localreel.service_layer.handlers.commands import (
+    MarkDownloadedHandler,
+    MarkFailedHandler,
     SubmitURLHandler,
 )
 from localreel.service_layer.handlers.events import (
@@ -31,11 +35,17 @@ class Container(containers.DeclarativeContainer):
     )
     uow = providers.Singleton(PostgresUnitOfWork, session_factory=session_factory)
 
+    downloader = providers.Singleton(
+        YtDlpDownloader, downloads_dir=settings.provided.downloads_dir
+    )
+
     message_bus: providers.Singleton[MessageBus] = providers.Singleton(
         MessageBus,
         command_handlers=providers.Dict(
             {
                 SubmitURL: providers.Singleton(SubmitURLHandler, uow),
+                MarkDownloaded: providers.Singleton(MarkDownloadedHandler, uow),
+                MarkFailed: providers.Singleton(MarkFailedHandler, uow),
             }
         ),
         event_handlers=providers.Dict(
@@ -51,4 +61,12 @@ class Container(containers.DeclarativeContainer):
                 SourceFileRemoved: providers.List(),
             }
         ),
+    )
+
+    # worker loop calls it repeatedly.
+    download_pending = providers.Callable(
+        download_next_pending,
+        uow=uow,
+        message_bus=message_bus,
+        downloader=downloader,
     )

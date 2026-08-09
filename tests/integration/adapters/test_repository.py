@@ -12,7 +12,7 @@ from localreel.adapters.repository import (
 from localreel.containers import Container
 from localreel.domain.entities.download_job import DownloadJob
 from localreel.domain.exceptions import VideoNotFound
-from localreel.domain.types import VideoStatus
+from localreel.domain.types import VideoSource, VideoStatus
 from tests.factories.video import VideoFactory
 
 
@@ -62,6 +62,39 @@ class TestPostgresVideoRepository:
         repository = PostgresVideoRepository(session)
 
         assert repository.get_by_source_url_hash("b" * 64) is None
+
+    def test_get_next_pending_returns_a_pending_remote_video(
+        self, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory()
+        repository.add(video)
+        session.commit()
+
+        assert repository.get_next_pending() is video
+
+    def test_get_next_pending_none_when_nothing_pending(self, session: Session) -> None:
+        repository = PostgresVideoRepository(session)
+
+        assert repository.get_next_pending() is None
+
+    def test_get_next_pending_excludes_local_source(self, session: Session) -> None:
+        repository = PostgresVideoRepository(session)
+        repository.add(VideoFactory(source=VideoSource.LOCAL))
+        session.commit()
+
+        assert repository.get_next_pending() is None
+
+    def test_get_next_pending_excludes_non_pending_status(
+        self, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory()
+        video.mark_downloading()
+        repository.add(video)
+        session.commit()
+
+        assert repository.get_next_pending() is None
 
 
 class TestPostgresDownloadJobRepository:

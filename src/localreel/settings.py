@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     db_password: str
     db_name: str
 
+    downloads_dir: str
+    worker_poll_interval_sec: float
+
     @property
     def db_url(self) -> URL:
         return URL.create(

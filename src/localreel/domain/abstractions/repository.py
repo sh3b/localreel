@@ -18,6 +18,10 @@ class AbstractVideoRepository(ABC):
     def get_by_source_url_hash(self, source_url_hash: str) -> Video | None:
         raise NotImplementedError
 
+    @abstractmethod
+    def get_next_pending(self) -> Video | None:
+        raise NotImplementedError
+
 
 class AbstractDownloadJobRepository(ABC):
     @abstractmethod

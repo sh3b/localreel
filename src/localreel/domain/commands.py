@@ -13,9 +13,15 @@ class SubmitURL(Command):
 
 
 @dataclass
-class DownloadVideo(Command):
+class MarkDownloaded(Command):
     video_id: UUID
-    url: str
+    original_path: str
+
+
+@dataclass
+class MarkFailed(Command):
+    video_id: UUID
+    reason: str
 
 
 @dataclass

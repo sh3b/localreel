@@ -7,11 +7,16 @@ from sqlalchemy.orm import Session
 
 from localreel.adapters import orm
 from localreel.containers import Container
-from localreel.domain.commands import SubmitURL
-from localreel.domain.events import VideoIngested
+from localreel.domain.commands import MarkDownloaded, MarkFailed, SubmitURL
+from localreel.domain.events import VideoDownloaded, VideoFailed, VideoIngested
 from localreel.domain.exceptions import UnsupportedSource
 from localreel.domain.types import VideoSource, VideoStatus, VideoVisibility
-from localreel.service_layer.handlers.commands import SubmitURLHandler
+from localreel.service_layer.handlers.commands import (
+    MarkDownloadedHandler,
+    MarkFailedHandler,
+    SubmitURLHandler,
+)
+from tests.factories.video import VideoFactory
 
 
 class TestSubmitURL:
@@ -108,3 +113,72 @@ class TestSubmitURL:
             events = handler(cmd)
 
         assert events == []
+
+
+class TestMarkDownloaded:
+    def test_persists_downloaded_state(self, container: Container) -> None:
+        uow = container.uow()
+        with uow:
+            video = VideoFactory()
+            video.mark_downloading()
+            uow.videos.add(video)
+            video_id = video.id
+
+        with uow:
+            container.message_bus().handle(
+                MarkDownloaded(video_id=video_id, original_path="/data/x.mp4")
+            )
+
+        with uow:
+            loaded = uow.videos.get(video_id)
+            assert loaded.status is VideoStatus.DOWNLOADED
+            assert loaded.original_path == "/data/x.mp4"
+            assert loaded.source_file_available is True
+
+    def test_returns_video_downloaded_event(self, container: Container) -> None:
+        uow = container.uow()
+        handler = MarkDownloadedHandler(uow)
+        with uow:
+            video = VideoFactory()
+            video.mark_downloading()
+            uow.videos.add(video)
+            video_id = video.id
+
+        with uow:
+            events = handler(
+                MarkDownloaded(video_id=video_id, original_path="/data/x.mp4")
+            )
+
+        assert events == [VideoDownloaded(video_id=video_id)]
+
+
+class TestMarkFailed:
+    def test_persists_failed_state(self, container: Container) -> None:
+        uow = container.uow()
+        with uow:
+            video = VideoFactory()
+            video.mark_downloading()
+            uow.videos.add(video)
+            video_id = video.id
+
+        with uow:
+            container.message_bus().handle(MarkFailed(video_id=video_id, reason="boom"))
+
+        with uow:
+            loaded = uow.videos.get(video_id)
+            assert loaded.status is VideoStatus.FAILED
+            assert loaded.error_message == "boom"
+
+    def test_returns_video_failed_event(self, container: Container) -> None:
+        uow = container.uow()
+        handler = MarkFailedHandler(uow)
+        with uow:
+            video = VideoFactory()
+            video.mark_downloading()
+            uow.videos.add(video)
+            video_id = video.id
+
+        with uow:
+            events = handler(MarkFailed(video_id=video_id, reason="boom"))
+
+        assert events == [VideoFailed(video_id=video_id, reason="boom")]
