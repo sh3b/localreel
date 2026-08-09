@@ -3,7 +3,7 @@ export PYTHONPATH := src
 -include .env
 export
 
-.PHONY: install test cov lint format typecheck migration migrate db db-reset api
+.PHONY: install test cov lint format typecheck migration migrate db db-reset api worker
 
 install:
 	uv sync
@@ -46,3 +46,6 @@ migrate:
 
 api:
 	uv run uvicorn localreel.entrypoints.api.main:create_app --factory --reload
+
+worker:
+	uv run python -m localreel.entrypoints.worker.main

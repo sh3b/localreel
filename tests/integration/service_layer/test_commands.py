@@ -1,3 +1,5 @@
+from uuid import UUID, uuid7
+
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -5,9 +7,10 @@ from sqlalchemy.orm import Session
 from localreel.adapters.orm import VideoORM
 from localreel.adapters.repository import PostgresVideoRepository
 from localreel.containers import Container
-from localreel.domain.commands import SubmitURL
-from localreel.domain.exceptions import DuplicateVideo, UnsupportedSource
+from localreel.domain.commands import MarkFailed, MarkReady, StartDownload, SubmitURL
+from localreel.domain.exceptions import DuplicateVideo, UnsupportedSource, VideoNotFound
 from localreel.domain.value_objects import VideoSource, VideoStatus
+from tests.factories import VideoFactory
 
 
 class TestSubmitURL:
@@ -61,3 +64,60 @@ class TestSubmitURL:
             container.message_bus().handle(SubmitURL(url="https://example.com/v/1"))
 
         assert session.scalar(select(func.count()).select_from(VideoORM)) == 0
+
+
+class TestDownloadCommands:
+    def test_start_download_marks_the_video_downloading(
+        self, container: Container, session: Session
+    ) -> None:
+        video_id = self._pending_video(container)
+
+        with container.uow():
+            container.message_bus().handle(StartDownload(video_id=video_id))
+
+        assert session.get_one(VideoORM, video_id).status is VideoStatus.DOWNLOADING
+
+    def test_mark_ready_stores_the_file_path(
+        self, container: Container, session: Session
+    ) -> None:
+        video_id = self._downloading_video(container)
+
+        with container.uow():
+            container.message_bus().handle(
+                MarkReady(video_id=video_id, file_path="/downloads/a.mp4")
+            )
+
+        row = session.get_one(VideoORM, video_id)
+        assert row.status is VideoStatus.READY
+        assert row.file_path == "/downloads/a.mp4"
+
+    def test_mark_failed_stores_the_reason(
+        self, container: Container, session: Session
+    ) -> None:
+        video_id = self._downloading_video(container)
+
+        with container.uow():
+            container.message_bus().handle(
+                MarkFailed(video_id=video_id, reason="Video unavailable")
+            )
+
+        row = session.get_one(VideoORM, video_id)
+        assert row.status is VideoStatus.FAILED
+        assert row.error == "Video unavailable"
+
+    def test_unknown_video_raises(self, container: Container) -> None:
+        with pytest.raises(VideoNotFound), container.uow():
+            container.message_bus().handle(StartDownload(video_id=uuid7()))
+
+    @staticmethod
+    def _pending_video(container: Container) -> UUID:
+        video = VideoFactory.build()
+        with container.uow() as uow:
+            uow.videos.add(video)
+        return video.id
+
+    def _downloading_video(self, container: Container) -> UUID:
+        video_id = self._pending_video(container)
+        with container.uow():
+            container.message_bus().handle(StartDownload(video_id=video_id))
+        return video_id

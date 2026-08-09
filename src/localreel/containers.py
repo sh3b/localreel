@@ -2,11 +2,18 @@ from dependency_injector import containers, providers
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from localreel.adapters.downloader import YtDlpDownloader
 from localreel.adapters.unit_of_work import PostgresUnitOfWork
-from localreel.domain.commands import SubmitURL
-from localreel.domain.events import VideoCreated
-from localreel.service_layer.handlers.commands import SubmitURLHandler
-from localreel.service_layer.handlers.events import AddVideoHandler
+from localreel.domain.commands import MarkFailed, MarkReady, StartDownload, SubmitURL
+from localreel.domain.events import VideoCreated, VideoUpdated
+from localreel.service_layer.download_service import DownloadService
+from localreel.service_layer.handlers.commands import (
+    MarkFailedHandler,
+    MarkReadyHandler,
+    StartDownloadHandler,
+    SubmitURLHandler,
+)
+from localreel.service_layer.handlers.events import AddVideoHandler, SaveVideoHandler
 from localreel.service_layer.message_bus import MessageBus
 from localreel.settings import Settings
 
@@ -20,13 +27,31 @@ class Container(containers.DeclarativeContainer):
     uow = providers.ContextLocalSingleton(
         PostgresUnitOfWork, session_factory=session_factory
     )
+    downloader = providers.Singleton(
+        YtDlpDownloader, downloads_dir=settings.provided.downloads_dir
+    )
 
     message_bus = providers.Factory(
         MessageBus,
         command_handlers=providers.Dict(
-            {SubmitURL: providers.Factory(SubmitURLHandler, uow=uow)}
+            {
+                SubmitURL: providers.Factory(SubmitURLHandler, uow=uow),
+                StartDownload: providers.Factory(StartDownloadHandler, uow=uow),
+                MarkReady: providers.Factory(MarkReadyHandler, uow=uow),
+                MarkFailed: providers.Factory(MarkFailedHandler, uow=uow),
+            }
         ),
         event_handlers=providers.Dict(
-            {VideoCreated: providers.List(providers.Factory(AddVideoHandler, uow=uow))}
+            {
+                VideoCreated: providers.List(
+                    providers.Factory(AddVideoHandler, uow=uow)
+                ),
+                VideoUpdated: providers.List(
+                    providers.Factory(SaveVideoHandler, uow=uow)
+                ),
+            }
         ),
+    )
+    download_service = providers.Factory(
+        DownloadService, uow=uow, message_bus=message_bus, downloader=downloader
     )

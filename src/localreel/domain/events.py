@@ -10,3 +10,8 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class VideoCreated(Event):
     video: Video
+
+
+@dataclass(frozen=True)
+class VideoUpdated(Event):
+    video: Video

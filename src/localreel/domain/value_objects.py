@@ -9,6 +9,9 @@ from localreel.domain.exceptions import UnsupportedSource
 
 class VideoStatus(StrEnum):
     PENDING = "PENDING"
+    DOWNLOADING = "DOWNLOADING"
+    READY = "READY"
+    FAILED = "FAILED"
 
 
 class VideoSource(StrEnum):

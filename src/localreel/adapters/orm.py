@@ -26,3 +26,5 @@ class VideoORM(Base):
     status: Mapped[VideoStatus] = mapped_column(
         Enum(VideoStatus, name="video_status", native_enum=False, length=32)
     )
+    file_path: Mapped[str | None] = mapped_column(Text)
+    error: Mapped[str | None] = mapped_column(Text)
