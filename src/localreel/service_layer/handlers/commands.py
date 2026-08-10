@@ -34,7 +34,7 @@ class MarkReadyHandler:
         self._uow = uow
 
     def __call__(self, cmd: MarkReady) -> list[Event]:
-        video = self._uow.videos.get(cmd.video_id, lock=False)
+        video = self._uow.videos.get(cmd.video_id, lock=True)
         video.mark_ready(cmd.file_path)
         return video.events
 
@@ -44,6 +44,6 @@ class MarkFailedHandler:
         self._uow = uow
 
     def __call__(self, cmd: MarkFailed) -> list[Event]:
-        video = self._uow.videos.get(cmd.video_id, lock=False)
+        video = self._uow.videos.get(cmd.video_id, lock=True)
         video.mark_failed(cmd.reason)
         return video.events
