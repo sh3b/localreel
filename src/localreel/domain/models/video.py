@@ -48,7 +48,7 @@ class Video:
         description: str | None,
         tags: list[str],
         duration_sec: int | None,
-        hls_path: str | None,
+        playback_path: str | None,
         thumbnail_path: str | None,
         original_path: str | None,
         phash: str | None,
@@ -69,7 +69,7 @@ class Video:
         self.description = description
         self.tags = tags
         self.duration_sec = duration_sec
-        self.hls_path = hls_path
+        self.playback_path = playback_path
         self.thumbnail_path = thumbnail_path
         self.original_path = original_path
         self.phash = phash
@@ -105,7 +105,7 @@ class Video:
             description=None,
             tags=[],
             duration_sec=None,
-            hls_path=None,
+            playback_path=None,
             thumbnail_path=None,
             original_path=None,
             phash=None,
@@ -138,9 +138,9 @@ class Video:
     def mark_transcoding(self) -> None:
         self._transition(VideoStatus.TRANSCODING)
 
-    def mark_ready(self, hls_path: str, thumbnail_path: str) -> None:
+    def mark_ready(self, playback_path: str, thumbnail_path: str) -> None:
         self._transition(VideoStatus.READY)
-        self.hls_path = hls_path
+        self.playback_path = playback_path
         self.thumbnail_path = thumbnail_path
         self.events.append(VideoReady(video_id=self.id))
 

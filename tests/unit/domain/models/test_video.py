@@ -53,9 +53,9 @@ class TestStatusTransitions:
         video.mark_transcoding()
         assert video.status is VideoStatus.TRANSCODING
 
-        video.mark_ready("/media/hls/v", "/media/thumbs/v.jpg")
+        video.mark_ready("/media/v/video.mp4", "/media/thumbs/v.jpg")
         assert video.status is VideoStatus.READY
-        assert video.hls_path == "/media/hls/v"
+        assert video.playback_path == "/media/v/video.mp4"
         assert video.thumbnail_path == "/media/thumbs/v.jpg"
 
     def test_local_upload_skips_downloading(self):
@@ -127,10 +127,10 @@ class TestStatusTransitions:
         video = VideoFactory()
 
         with pytest.raises(InvalidStatusTransition):
-            video.mark_ready("/hls", "/thumb")
+            video.mark_ready("/video.mp4", "/thumb")
 
         assert video.status is VideoStatus.PENDING
-        assert video.hls_path is None
+        assert video.playback_path is None
         assert video.thumbnail_path is None
         assert video.events == []
 
