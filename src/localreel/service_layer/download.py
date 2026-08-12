@@ -25,7 +25,7 @@ def download_next_pending(
     if claimed is None:
         return False
     video_id, url = claimed
-    outcome = _download(downloader, video_id, url)
+    outcome: MarkDownloaded | MarkFailed = _download(downloader, video_id, url)
     with uow:
         message_bus.handle(outcome)
     return True

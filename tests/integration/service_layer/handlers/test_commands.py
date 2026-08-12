@@ -7,13 +7,19 @@ from sqlalchemy.orm import Session
 
 from localreel.adapters import orm
 from localreel.containers import Container
-from localreel.domain.commands import MarkDownloaded, MarkFailed, SubmitURL
-from localreel.domain.events import VideoDownloaded, VideoFailed, VideoIngested
+from localreel.domain.commands import MarkDownloaded, MarkFailed, MarkReady, SubmitURL
+from localreel.domain.events import (
+    VideoDownloaded,
+    VideoFailed,
+    VideoIngested,
+    VideoReady,
+)
 from localreel.domain.exceptions import UnsupportedSource
 from localreel.domain.types import VideoSource, VideoStatus, VideoVisibility
 from localreel.service_layer.handlers.commands import (
     MarkDownloadedHandler,
     MarkFailedHandler,
+    MarkReadyHandler,
     SubmitURLHandler,
 )
 from tests.factories.video import VideoFactory
@@ -21,6 +27,15 @@ from tests.factories.video import VideoFactory
 
 class TestSubmitURL:
     URL = "https://youtube.com/watch?v=dQw4w9WgXcQ"
+
+    @staticmethod
+    def _count_by_url(session: Session, url: str) -> int | None:
+        url_hash = hashlib.sha256(url.encode()).hexdigest()
+        return session.scalar(
+            select(func.count())
+            .select_from(orm.videos)
+            .where(orm.videos.c.source_url_hash == url_hash)
+        )
 
     def test_persists_a_pending_video(self, container: Container) -> None:
         uow = container.uow()
@@ -63,7 +78,7 @@ class TestSubmitURL:
                 )
             )
 
-        count = session.scalar(select(func.count()).select_from(orm.videos))
+        count = self._count_by_url(session, self.URL)
         assert count == 1
 
     def test_unsupported_url_raises_and_persists_nothing(
@@ -72,17 +87,19 @@ class TestSubmitURL:
         uow = container.uow()
         bus = container.message_bus()
 
+        unsupported_url = "https://vimeo.com/12345"
+
         with pytest.raises(UnsupportedSource):
             with uow:
                 bus.handle(
                     SubmitURL(
-                        url="https://vimeo.com/12345",
+                        url=unsupported_url,
                         user_id=UUID(int=0),
                         visibility=VideoVisibility.SHARED,
                     )
                 )
 
-        count = session.scalar(select(func.count()).select_from(orm.videos))
+        count = self._count_by_url(session, unsupported_url)
         assert count == 0
 
     def test_returns_video_ingested_when_created(self, container: Container) -> None:
@@ -150,6 +167,58 @@ class TestMarkDownloaded:
             )
 
         assert events == [VideoDownloaded(video_id=video_id)]
+
+
+class TestMarkReady:
+    PLAYBACK = "/media/x/x.mp4"
+    THUMBNAIL = "/media/x/x-thumbnail.jpg"
+
+    def test_persists_ready_state(self, container: Container) -> None:
+        uow = container.uow()
+        with uow:
+            video = VideoFactory()
+            video.mark_downloading()
+            video.mark_downloaded("/downloads/x.webm")
+            video.mark_transcoding()
+            uow.videos.add(video)
+            video_id = video.id
+
+        with uow:
+            container.message_bus().handle(
+                MarkReady(
+                    video_id=video_id,
+                    playback_path=self.PLAYBACK,
+                    thumbnail_path=self.THUMBNAIL,
+                )
+            )
+
+        with uow:
+            loaded = uow.videos.get(video_id)
+            assert loaded.status is VideoStatus.READY
+            assert loaded.playback_path == self.PLAYBACK
+            assert loaded.thumbnail_path == self.THUMBNAIL
+
+    def test_returns_video_ready_event(self, container: Container) -> None:
+        uow = container.uow()
+        handler = MarkReadyHandler(uow)
+        with uow:
+            video = VideoFactory()
+            video.mark_downloading()
+            video.mark_downloaded("/downloads/x.webm")
+            video.mark_transcoding()
+            uow.videos.add(video)
+            video_id = video.id
+
+        with uow:
+            events = handler(
+                MarkReady(
+                    video_id=video_id,
+                    playback_path=self.PLAYBACK,
+                    thumbnail_path=self.THUMBNAIL,
+                )
+            )
+
+        assert events == [VideoReady(video_id=video_id)]
 
 
 class TestMarkFailed:

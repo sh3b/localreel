@@ -19,11 +19,13 @@ class MarkDownloaded(Command):
 
 
 @dataclass
-class MarkFailed(Command):
+class MarkReady(Command):
     video_id: UUID
-    reason: str
+    playback_path: str
+    thumbnail_path: str
 
 
 @dataclass
-class TranscodeVideo(Command):
+class MarkFailed(Command):
     video_id: UUID
+    reason: str

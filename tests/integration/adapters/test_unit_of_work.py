@@ -21,5 +21,9 @@ class TestPostgresUnitOfWork:
                 assert uow.videos.get_by_source_url_hash(URL_HASH) is not None
                 raise RuntimeError("boom")
 
-        count = session.scalar(select(func.count()).select_from(orm.videos))
+        count = session.scalar(
+            select(func.count())
+            .select_from(orm.videos)
+            .where(orm.videos.c.source_url_hash == URL_HASH)
+        )
         assert count == 0

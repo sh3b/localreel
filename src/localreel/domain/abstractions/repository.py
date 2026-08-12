@@ -22,6 +22,10 @@ class AbstractVideoRepository(ABC):
     def get_next_pending(self) -> Video | None:
         raise NotImplementedError
 
+    @abstractmethod
+    def get_next_downloaded(self) -> Video | None:
+        raise NotImplementedError
+
 
 class AbstractDownloadJobRepository(ABC):
     @abstractmethod

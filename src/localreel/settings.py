@@ -10,7 +10,11 @@ class Settings(BaseSettings):
     db_name: str
 
     downloads_dir: str
-    worker_poll_interval_sec: float
+    download_poll_interval_sec: float
+
+    media_dir: str
+    transcode_poll_interval_sec: float
+    transcode_timeout_sec: float
 
     @property
     def db_url(self) -> URL:

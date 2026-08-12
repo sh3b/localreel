@@ -31,7 +31,10 @@ jobs:
       DB_PASSWORD: localreel
       DB_NAME: localreel
       DOWNLOADS_DIR: ./data/downloads
-      WORKER_POLL_INTERVAL_SEC: 5
+      DOWNLOAD_POLL_INTERVAL_SEC: 5
+      MEDIA_DIR: ./data/media
+      TRANSCODE_POLL_INTERVAL_SEC: 5
+      TRANSCODE_TIMEOUT_SEC: 3600
 
     steps:
       - uses: actions/checkout@v7

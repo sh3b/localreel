@@ -3,8 +3,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from localreel.adapters.downloader import YtDlpDownloader
+from localreel.adapters.transcoder import FfmpegTranscoder
 from localreel.adapters.unit_of_work import PostgresUnitOfWork
-from localreel.domain.commands import MarkDownloaded, MarkFailed, SubmitURL
+from localreel.domain.commands import MarkDownloaded, MarkFailed, MarkReady, SubmitURL
 from localreel.domain.events import (
     SourceFileRemoved,
     TagsUpdated,
@@ -18,12 +19,14 @@ from localreel.service_layer.download import download_next_pending
 from localreel.service_layer.handlers.commands import (
     MarkDownloadedHandler,
     MarkFailedHandler,
+    MarkReadyHandler,
     SubmitURLHandler,
 )
 from localreel.service_layer.handlers.events import (
     OnVideoIngestedHandler,
 )
 from localreel.service_layer.message_bus import MessageBus
+from localreel.service_layer.transcode import transcode_next_downloaded
 from localreel.settings import Settings
 
 
@@ -39,12 +42,19 @@ class Container(containers.DeclarativeContainer):
         YtDlpDownloader, downloads_dir=settings.provided.downloads_dir
     )
 
+    transcoder = providers.Singleton(
+        FfmpegTranscoder,
+        media_dir=settings.provided.media_dir,
+        timeout_sec=settings.provided.transcode_timeout_sec,
+    )
+
     message_bus: providers.Singleton[MessageBus] = providers.Singleton(
         MessageBus,
         command_handlers=providers.Dict(
             {
                 SubmitURL: providers.Singleton(SubmitURLHandler, uow),
                 MarkDownloaded: providers.Singleton(MarkDownloadedHandler, uow),
+                MarkReady: providers.Singleton(MarkReadyHandler, uow),
                 MarkFailed: providers.Singleton(MarkFailedHandler, uow),
             }
         ),
@@ -69,4 +79,11 @@ class Container(containers.DeclarativeContainer):
         uow=uow,
         message_bus=message_bus,
         downloader=downloader,
+    )
+
+    transcode_pending = providers.Callable(
+        transcode_next_downloaded,
+        uow=uow,
+        message_bus=message_bus,
+        transcoder=transcoder,
     )

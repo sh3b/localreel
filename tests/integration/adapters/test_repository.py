@@ -96,6 +96,45 @@ class TestPostgresVideoRepository:
 
         assert repository.get_next_pending() is None
 
+    def test_get_next_downloaded_returns_a_downloaded_video(
+        self, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory()
+        video.mark_downloading()
+        video.mark_downloaded("/downloads/v.webm")
+        repository.add(video)
+        session.commit()
+
+        assert repository.get_next_downloaded() is video
+
+    def test_get_next_downloaded_none_when_nothing_downloaded(
+        self, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+
+        assert repository.get_next_downloaded() is None
+
+    def test_get_next_downloaded_includes_local_source(self, session: Session) -> None:
+        # Unlike the download claim, LOCAL uploads must be picked up: they reach
+        # DOWNLOADED directly and still need normalizing and a thumbnail.
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory(source=VideoSource.LOCAL)
+        video.mark_downloaded("/uploads/v.mp4")
+        repository.add(video)
+        session.commit()
+
+        assert repository.get_next_downloaded() is video
+
+    def test_get_next_downloaded_excludes_non_downloaded_status(
+        self, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        repository.add(VideoFactory())
+        session.commit()
+
+        assert repository.get_next_downloaded() is None
+
 
 class TestPostgresDownloadJobRepository:
     def test_add_persists_the_job(self, container: Container, session: Session) -> None:

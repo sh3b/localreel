@@ -3,7 +3,7 @@ export PYTHONPATH := src
 -include .env
 export
 
-.PHONY: install sync-locked test cov check lint format typecheck migration migrate db db-reset db-logs api worker
+.PHONY: install sync-locked test cov check lint format typecheck migration migrate db db-reset db-logs api download-worker transcode-worker
 
 install:
 	uv sync
@@ -55,5 +55,8 @@ migrate:
 api:
 	uv run uvicorn localreel.entrypoints.api.main:create_app --factory --reload
 
-worker:
-	uv run python -m localreel.entrypoints.worker.main
+download-worker:
+	uv run python -m localreel.entrypoints.download_worker.main
+
+transcode-worker:
+	uv run python -m localreel.entrypoints.transcode_worker.main

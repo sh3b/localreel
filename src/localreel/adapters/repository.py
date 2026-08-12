@@ -44,6 +44,17 @@ class PostgresVideoRepository(AbstractVideoRepository):
         )
         return self._session.scalars(stmt).first()
 
+    def get_next_downloaded(self) -> Video | None:
+        # No source filter, unlike get_next_pending: LOCAL uploads reach
+        # DOWNLOADED too and need the same normalize-and-thumbnail pass.
+        stmt = (
+            select(Video)
+            .where(orm.videos.c.status == VideoStatus.DOWNLOADED)
+            .with_for_update(skip_locked=True)
+            .limit(1)
+        )
+        return self._session.scalars(stmt).first()
+
 
 class PostgresDownloadJobRepository(AbstractDownloadJobRepository):
     def __init__(self, session: Session) -> None:
