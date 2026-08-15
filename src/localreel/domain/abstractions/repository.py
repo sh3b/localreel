@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
 
-from localreel.domain.entities.download_job import DownloadJob
 from localreel.domain.models.video import Video
 
 
@@ -24,10 +23,4 @@ class AbstractVideoRepository(ABC):
 
     @abstractmethod
     def get_next_downloaded(self) -> Video | None:
-        raise NotImplementedError
-
-
-class AbstractDownloadJobRepository(ABC):
-    @abstractmethod
-    def add(self, job: DownloadJob) -> None:
         raise NotImplementedError

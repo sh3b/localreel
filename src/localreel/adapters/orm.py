@@ -21,7 +21,6 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import registry
 
-from localreel.domain.entities.download_job import DownloadJob
 from localreel.domain.models.video import Video
 from localreel.domain.types import VideoSource, VideoStatus, VideoVisibility
 
@@ -67,15 +66,7 @@ videos = Table(
     Column("error_message", Text, nullable=True),
 )
 
-download_jobs = Table(
-    "download_jobs",
-    metadata,
-    Column("id", Uuid, primary_key=True),
-    Column("video_id", Uuid, nullable=False, unique=True),
-)
-
 mapper_registry.map_imperatively(Video, videos)
-mapper_registry.map_imperatively(DownloadJob, download_jobs)
 
 
 @event.listens_for(Video, "load")

@@ -22,9 +22,6 @@ from localreel.service_layer.handlers.commands import (
     MarkReadyHandler,
     SubmitURLHandler,
 )
-from localreel.service_layer.handlers.events import (
-    OnVideoIngestedHandler,
-)
 from localreel.service_layer.message_bus import MessageBus
 from localreel.service_layer.transcode import transcode_next_downloaded
 from localreel.settings import Settings
@@ -60,9 +57,7 @@ class Container(containers.DeclarativeContainer):
         ),
         event_handlers=providers.Dict(
             {
-                VideoIngested: providers.List(
-                    providers.Singleton(OnVideoIngestedHandler, uow),
-                ),
+                VideoIngested: providers.List(),
                 VideoDownloaded: providers.List(),
                 VideoReady: providers.List(),
                 VideoFailed: providers.List(),

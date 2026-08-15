@@ -4,11 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from localreel.adapters import orm
-from localreel.domain.abstractions.repository import (
-    AbstractDownloadJobRepository,
-    AbstractVideoRepository,
-)
-from localreel.domain.entities.download_job import DownloadJob
+from localreel.domain.abstractions.repository import AbstractVideoRepository
 from localreel.domain.exceptions import VideoNotFound
 from localreel.domain.models.video import Video
 from localreel.domain.types import VideoSource, VideoStatus
@@ -54,11 +50,3 @@ class PostgresVideoRepository(AbstractVideoRepository):
             .limit(1)
         )
         return self._session.scalars(stmt).first()
-
-
-class PostgresDownloadJobRepository(AbstractDownloadJobRepository):
-    def __init__(self, session: Session) -> None:
-        self._session = session
-
-    def add(self, job: DownloadJob) -> None:
-        self._session.add(job)
