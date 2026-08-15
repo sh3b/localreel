@@ -81,4 +81,5 @@ class Container(containers.DeclarativeContainer):
         uow=uow,
         message_bus=message_bus,
         transcoder=transcoder,
+        downloads_dir=settings.provided.downloads_dir,
     )

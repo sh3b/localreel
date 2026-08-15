@@ -18,7 +18,7 @@ _METADATA = SourceMetadata(
     view_count=42984,
     raw={"id": "aBcDeFgHiJk", "extractor": "youtube"},
 )
-_RESULT = DownloadResult(original_path="/data/x.mp4", source_metadata=_METADATA)
+_RESULT = DownloadResult(original_path="x.mp4", source_metadata=_METADATA)
 
 
 class _FakeDownloader(AbstractDownloader):
@@ -51,7 +51,7 @@ class TestDownloadNextPending:
         with uow:
             loaded = uow.videos.get(video_id)
             assert loaded.status is VideoStatus.DOWNLOADED
-            assert loaded.original_path == "/data/x.mp4"
+            assert loaded.original_path == "x.mp4"
             assert loaded.source_metadata == _METADATA
             assert loaded.source_file_available is True
 

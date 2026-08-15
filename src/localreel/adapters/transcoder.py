@@ -37,8 +37,8 @@ class FfmpegTranscoder(AbstractTranscoder):
 
         duration_sec, width, height = self._probe_media(original_path)
         return TranscodeResult(
-            playback_path=str(out_dir / f"{video_id}.mp4"),
-            thumbnail_path=str(out_dir / f"{video_id}-thumbnail.jpg"),
+            playback_path=f"{video_id}/{video_id}.mp4",
+            thumbnail_path=f"{video_id}/{video_id}-thumbnail.jpg",
             duration_sec=duration_sec,
             width=width,
             height=height,

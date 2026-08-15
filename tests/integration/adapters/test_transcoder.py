@@ -80,8 +80,8 @@ class TestFfmpegTranscoder:
             video_id=video_id, original_path=str(source)
         )
 
-        playback = Path(result.playback_path)
-        assert playback == media_dir / str(video_id) / f"{video_id}.mp4"
+        playback = media_dir / result.playback_path
+        assert result.playback_path == f"{video_id}/{video_id}.mp4"
         assert playback.exists()
         assert _codec(playback, "v:0") == "h264"
         assert _codec(playback, "a:0") == "aac"
@@ -99,7 +99,7 @@ class TestFfmpegTranscoder:
             video_id=uuid7(), original_path=str(source)
         )
 
-        playback = Path(result.playback_path)
+        playback = media_dir / result.playback_path
         assert _codec(playback, "v:0") == "h264"
         assert _codec(playback, "a:0") == "aac"
 
@@ -116,7 +116,7 @@ class TestFfmpegTranscoder:
             video_id=uuid7(), original_path=str(source)
         )
 
-        playback = Path(result.playback_path)
+        playback = media_dir / result.playback_path
         assert _codec(playback, "v:0") == "h264"
         assert _codec(playback, "a:0") == "aac"
 
@@ -134,8 +134,8 @@ class TestFfmpegTranscoder:
             video_id=video_id, original_path=str(source)
         )
 
-        thumbnail = Path(result.thumbnail_path)
-        assert thumbnail == media_dir / str(video_id) / f"{video_id}-thumbnail.jpg"
+        thumbnail = media_dir / result.thumbnail_path
+        assert result.thumbnail_path == f"{video_id}/{video_id}-thumbnail.jpg"
         assert _codec(thumbnail, "v:0") == "mjpeg"
 
     def test_prefers_the_archived_source_thumbnail(
@@ -154,8 +154,7 @@ class TestFfmpegTranscoder:
             video_id=video_id, original_path=str(source)
         )
 
-        # Copied verbatim rather than regenerated from a frame.
-        assert Path(result.thumbnail_path).read_bytes() == b"not really a jpeg"
+        assert (media_dir / result.thumbnail_path).read_bytes() == b"not really a jpeg"
 
     def test_reports_the_probed_media_properties(
         self, tmp_path: Path, media_dir: Path

@@ -57,5 +57,5 @@ class TestSourceThumbnailHandoff:
             video_id=video_id, original_path=str(mezzanine)
         )
 
-        # A frame grab is also a valid jpeg, so only the bytes distinguish them.
-        assert Path(result.thumbnail_path).read_bytes() == ARCHIVED_IMAGE
+        media_dir = tmp_path / "media"
+        assert (media_dir / result.thumbnail_path).read_bytes() == ARCHIVED_IMAGE

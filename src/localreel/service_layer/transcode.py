@@ -1,4 +1,5 @@
 import logging
+import os
 from uuid import UUID
 
 from localreel.domain.abstractions.transcoder import AbstractTranscoder
@@ -13,6 +14,7 @@ def transcode_next_downloaded(
     uow: AbstractUnitOfWork,
     message_bus: MessageBus,
     transcoder: AbstractTranscoder,
+    downloads_dir: str,
 ) -> bool:
     """Claim one downloaded video, normalize it, and persist the outcome.
 
@@ -24,7 +26,8 @@ def transcode_next_downloaded(
     if claimed is None:
         return False
     video_id, original_path = claimed
-    outcome: MarkReady | MarkFailed = _transcode(transcoder, video_id, original_path)
+    absolute_path = os.path.join(downloads_dir, original_path)
+    outcome: MarkReady | MarkFailed = _transcode(transcoder, video_id, absolute_path)
     with uow:
         message_bus.handle(outcome)
     return True

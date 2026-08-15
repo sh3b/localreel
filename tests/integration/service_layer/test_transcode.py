@@ -25,8 +25,8 @@ class _FakeTranscoder(AbstractTranscoder):
 
 
 _RESULT = TranscodeResult(
-    playback_path="/media/x/x.mp4",
-    thumbnail_path="/media/x/x-thumbnail.jpg",
+    playback_path="x/x.mp4",
+    thumbnail_path="x/x-thumbnail.jpg",
     duration_sec=58,
     width=1080,
     height=1920,
@@ -39,12 +39,12 @@ class TestTranscodeNextDownloaded:
         with uow:
             video = VideoFactory()
             video.mark_downloading()
-            video.mark_downloaded("/downloads/x.webm")
+            video.mark_downloaded("x.webm")
             uow.videos.add(video)
             video_id = video.id
 
         did_work = transcode_next_downloaded(
-            uow, container.message_bus(), _FakeTranscoder(result=_RESULT)
+            uow, container.message_bus(), _FakeTranscoder(result=_RESULT), "/downloads"
         )
 
         assert did_work is True
@@ -61,12 +61,15 @@ class TestTranscodeNextDownloaded:
         with uow:
             video = VideoFactory()
             video.mark_downloading()
-            video.mark_downloaded("/downloads/x.webm")
+            video.mark_downloaded("x.webm")
             uow.videos.add(video)
             video_id = video.id
 
         did_work = transcode_next_downloaded(
-            uow, container.message_bus(), _FakeTranscoder(error=RuntimeError("boom"))
+            uow,
+            container.message_bus(),
+            _FakeTranscoder(error=RuntimeError("boom")),
+            "/downloads",
         )
 
         assert did_work is True
@@ -79,7 +82,7 @@ class TestTranscodeNextDownloaded:
         uow = container.uow()
 
         did_work = transcode_next_downloaded(
-            uow, container.message_bus(), _FakeTranscoder(result=_RESULT)
+            uow, container.message_bus(), _FakeTranscoder(result=_RESULT), "/downloads"
         )
 
         assert did_work is False

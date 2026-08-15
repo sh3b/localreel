@@ -1,3 +1,4 @@
+import os
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -30,10 +31,10 @@ class YtDlpDownloader(AbstractDownloader):
             info = ydl.extract_info(url, download=True)
             info = ydl.sanitize_info(info)
 
+        filepath = str(info["requested_downloads"][0]["filepath"])
+        relative = os.path.relpath(filepath, self._downloads_dir)
         return DownloadResult(
-            # `requested_downloads[0].filepath` is the final path after any
-            # merge/postprocessing, unlike prepare_filename() which predates it.
-            original_path=str(info["requested_downloads"][0]["filepath"]),
+            original_path=relative,
             source_metadata=self._source_metadata(info),
         )
 
