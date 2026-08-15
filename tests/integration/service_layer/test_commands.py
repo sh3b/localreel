@@ -10,7 +10,7 @@ from localreel.containers import Container
 from localreel.domain.commands import MarkFailed, MarkReady, StartDownload, SubmitURL
 from localreel.domain.exceptions import DuplicateVideo, UnsupportedSource, VideoNotFound
 from localreel.domain.value_objects import VideoSource, VideoStatus
-from tests.factories import VideoFactory
+from tests.factories import SourceMetadataFactory, VideoFactory
 
 
 class TestSubmitURL:
@@ -77,19 +77,28 @@ class TestDownloadCommands:
 
         assert session.get_one(VideoORM, video_id).status is VideoStatus.DOWNLOADING
 
-    def test_mark_ready_stores_the_file_path(
+    def test_mark_ready_stores_the_download_result(
         self, container: Container, session: Session
     ) -> None:
         video_id = self._downloading_video(container)
 
         with container.uow():
             container.message_bus().handle(
-                MarkReady(video_id=video_id, file_path="/downloads/a.mp4")
+                MarkReady(
+                    video_id=video_id,
+                    file_path="a.webm",
+                    thumbnail_path="a.webp",
+                    metadata=SourceMetadataFactory.build(),
+                )
             )
 
         row = session.get_one(VideoORM, video_id)
         assert row.status is VideoStatus.READY
-        assert row.file_path == "/downloads/a.mp4"
+        assert row.file_path == "a.webm"
+        assert row.thumbnail_path == "a.webp"
+        assert row.source_title == "Me at the zoo"
+        assert row.source_view_count == 448473011
+        assert row.source_raw == {"id": "jNQXAC9IVRw", "extractor": "youtube"}
 
     def test_mark_failed_stores_the_reason(
         self, container: Container, session: Session

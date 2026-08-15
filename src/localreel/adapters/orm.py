@@ -1,6 +1,8 @@
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Enum, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Enum, Integer, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from localreel.domain.value_objects import VideoSource, VideoStatus
@@ -27,4 +29,11 @@ class VideoORM(Base):
         Enum(VideoStatus, name="video_status", native_enum=False, length=32)
     )
     file_path: Mapped[str | None] = mapped_column(Text)
+    thumbnail_path: Mapped[str | None] = mapped_column(Text)
+    source_title: Mapped[str | None] = mapped_column(Text)
+    source_description: Mapped[str | None] = mapped_column(Text)
+    source_uploader: Mapped[str | None] = mapped_column(Text)
+    source_view_count: Mapped[int | None] = mapped_column(BigInteger)
+    source_duration_sec: Mapped[int | None] = mapped_column(Integer)
+    source_raw: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     error: Mapped[str | None] = mapped_column(Text)

@@ -1,9 +1,19 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from uuid import UUID
+
+from localreel.domain.value_objects import SourceMetadata
+
+
+@dataclass(frozen=True)
+class DownloadResult:
+    file_path: str
+    thumbnail_path: str | None
+    metadata: SourceMetadata
 
 
 class AbstractDownloader(ABC):
     @abstractmethod
-    def download(self, *, url: str, video_id: UUID) -> str:
-        """Downloads the video and returns the path of the saved file."""
+    def download(self, *, url: str, video_id: UUID) -> DownloadResult:
+        """Downloads the video; paths are relative to the downloads directory."""
         raise NotImplementedError

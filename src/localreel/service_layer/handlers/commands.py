@@ -35,7 +35,11 @@ class MarkReadyHandler:
 
     def __call__(self, cmd: MarkReady) -> list[Event]:
         video = self._uow.videos.get(cmd.video_id, lock=True)
-        video.mark_ready(cmd.file_path)
+        video.mark_ready(
+            file_path=cmd.file_path,
+            thumbnail_path=cmd.thumbnail_path,
+            metadata=cmd.metadata,
+        )
         return video.events
 
 

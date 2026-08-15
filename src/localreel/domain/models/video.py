@@ -3,7 +3,12 @@ from uuid import UUID
 from localreel.domain.events import VideoCreated, VideoUpdated
 from localreel.domain.exceptions import InvalidStatusTransition
 from localreel.domain.messages import Event
-from localreel.domain.value_objects import SourceURL, VideoSource, VideoStatus
+from localreel.domain.value_objects import (
+    SourceMetadata,
+    SourceURL,
+    VideoSource,
+    VideoStatus,
+)
 
 
 class Video:
@@ -16,6 +21,8 @@ class Video:
         source_key: str,
         status: VideoStatus,
         file_path: str | None,
+        thumbnail_path: str | None,
+        source_metadata: SourceMetadata | None,
         error: str | None,
     ) -> None:
         self.id = id
@@ -24,6 +31,8 @@ class Video:
         self.source_key = source_key
         self.status = status
         self.file_path = file_path
+        self.thumbnail_path = thumbnail_path
+        self.source_metadata = source_metadata
         self.error = error
 
         self.events: list[Event] = []
@@ -38,6 +47,8 @@ class Video:
             source_key=parsed.key,
             status=VideoStatus.PENDING,
             file_path=None,
+            thumbnail_path=None,
+            source_metadata=None,
             error=None,
         )
         video.events.append(VideoCreated(video))
@@ -46,9 +57,17 @@ class Video:
     def start_download(self) -> None:
         self._transition(VideoStatus.PENDING, VideoStatus.DOWNLOADING)
 
-    def mark_ready(self, file_path: str) -> None:
+    def mark_ready(
+        self,
+        *,
+        file_path: str,
+        thumbnail_path: str | None,
+        metadata: SourceMetadata,
+    ) -> None:
         self._transition(VideoStatus.DOWNLOADING, VideoStatus.READY)
         self.file_path = file_path
+        self.thumbnail_path = thumbnail_path
+        self.source_metadata = metadata
 
     def mark_failed(self, reason: str) -> None:
         self._transition(VideoStatus.DOWNLOADING, VideoStatus.FAILED)

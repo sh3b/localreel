@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import ClassVar
+from typing import Any, ClassVar
 from urllib.parse import parse_qs, urlsplit
 
 from localreel.domain.exceptions import UnsupportedSource
@@ -92,3 +92,13 @@ class SourceURL:
         if not cls._YOUTUBE_ID.fullmatch(candidate):
             raise UnsupportedSource(f"Not a YouTube video URL: {url}")
         return candidate
+
+
+@dataclass(frozen=True)
+class SourceMetadata:
+    title: str | None
+    description: str | None
+    uploader: str | None
+    view_count: int | None
+    duration_sec: int | None
+    raw: dict[str, Any]

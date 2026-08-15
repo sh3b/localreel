@@ -9,7 +9,7 @@ from localreel.adapters.orm import VideoORM
 from localreel.domain.exceptions import DuplicateVideo, VideoNotFound
 from localreel.domain.models.video import Video
 from localreel.domain.repository import AbstractVideoRepository
-from localreel.domain.value_objects import VideoStatus
+from localreel.domain.value_objects import SourceMetadata, VideoStatus
 
 
 class PostgresVideoRepository(AbstractVideoRepository):
@@ -58,6 +58,17 @@ class PostgresVideoRepository(AbstractVideoRepository):
 
     @staticmethod
     def _to_domain(row: VideoORM) -> Video:
+        source_metadata = None
+        if row.source_raw is not None:
+            source_metadata = SourceMetadata(
+                title=row.source_title,
+                description=row.source_description,
+                uploader=row.source_uploader,
+                view_count=row.source_view_count,
+                duration_sec=row.source_duration_sec,
+                raw=row.source_raw,
+            )
+
         return Video(
             id=row.id,
             source=row.source,
@@ -65,17 +76,31 @@ class PostgresVideoRepository(AbstractVideoRepository):
             source_key=row.source_key,
             status=row.status,
             file_path=row.file_path,
+            thumbnail_path=row.thumbnail_path,
+            source_metadata=source_metadata,
             error=row.error,
         )
 
     @staticmethod
     def _to_orm(video: Video) -> VideoORM:
-        return VideoORM(
+        row = VideoORM(
             id=video.id,
             source=video.source,
             source_url=video.source_url,
             source_key=video.source_key,
             status=video.status,
             file_path=video.file_path,
+            thumbnail_path=video.thumbnail_path,
             error=video.error,
         )
+
+        metadata = video.source_metadata
+        if metadata is not None:
+            row.source_title = metadata.title
+            row.source_description = metadata.description
+            row.source_uploader = metadata.uploader
+            row.source_view_count = metadata.view_count
+            row.source_duration_sec = metadata.duration_sec
+            row.source_raw = metadata.raw
+
+        return row

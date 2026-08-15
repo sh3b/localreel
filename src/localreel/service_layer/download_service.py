@@ -36,14 +36,17 @@ class DownloadService:
 
         command: MarkReady | MarkFailed
         try:
-            file_path = self._downloader.download(
-                url=video.source_url, video_id=video.id
-            )
+            result = self._downloader.download(url=video.source_url, video_id=video.id)
         except Exception as exc:
             logger.exception("download failed for video %s", video.id)
             command = MarkFailed(video_id=video.id, reason=str(exc))
         else:
-            command = MarkReady(video_id=video.id, file_path=file_path)
+            command = MarkReady(
+                video_id=video.id,
+                file_path=result.file_path,
+                thumbnail_path=result.thumbnail_path,
+                metadata=result.metadata,
+            )
 
         with self._uow:
             self._bus.handle(command)

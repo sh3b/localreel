@@ -7,7 +7,7 @@ from localreel.adapters.orm import VideoORM
 from localreel.adapters.repository import PostgresVideoRepository
 from localreel.domain.exceptions import DuplicateVideo, VideoNotFound
 from localreel.domain.value_objects import VideoSource, VideoStatus
-from tests.factories import VideoFactory
+from tests.factories import SourceMetadataFactory, VideoFactory
 
 
 class TestPostgresVideoRepository:
@@ -68,16 +68,18 @@ class TestPostgresVideoRepository:
         video = repository.next_pending()
         assert video is not None
         video.start_download()
-        video.mark_ready("/downloads/a.mp4")
+        metadata = SourceMetadataFactory.build()
+        video.mark_ready(file_path="a.webm", thumbnail_path="a.webp", metadata=metadata)
 
         repository.save(video)
         session.commit()
 
         with session_factory() as other_session:
-            row = other_session.get(VideoORM, video.id)
-            assert row is not None
-            assert row.status is VideoStatus.READY
-            assert row.file_path == "/downloads/a.mp4"
+            loaded = PostgresVideoRepository(other_session).get(video.id, lock=False)
+            assert loaded.status is VideoStatus.READY
+            assert loaded.file_path == "a.webm"
+            assert loaded.thumbnail_path == "a.webp"
+            assert loaded.source_metadata == metadata
 
     def test_next_pending_returns_the_oldest_pending_video(
         self, session: Session

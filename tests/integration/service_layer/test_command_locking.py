@@ -11,7 +11,7 @@ from localreel.containers import Container
 from localreel.domain.commands import MarkFailed, MarkReady
 from localreel.domain.exceptions import InvalidStatusTransition
 from localreel.domain.value_objects import VideoStatus
-from tests.factories import VideoFactory
+from tests.factories import SourceMetadataFactory, VideoFactory
 
 
 class TestCommandLocking:
@@ -44,7 +44,12 @@ class TestCommandLocking:
     @pytest.mark.parametrize(
         "make_command",
         [
-            lambda video_id: MarkReady(video_id=video_id, file_path="a.webm"),
+            lambda video_id: MarkReady(
+                video_id=video_id,
+                file_path="a.webm",
+                thumbnail_path=None,
+                metadata=SourceMetadataFactory.build(),
+            ),
             lambda video_id: MarkFailed(video_id=video_id, reason="unavailable"),
         ],
         ids=["MarkReady", "MarkFailed"],

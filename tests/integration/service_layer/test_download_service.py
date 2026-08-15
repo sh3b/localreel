@@ -7,10 +7,10 @@ from localreel.adapters.orm import VideoORM
 from localreel.adapters.repository import PostgresVideoRepository
 from localreel.containers import Container
 from localreel.domain.commands import StartDownload
-from localreel.domain.downloader import AbstractDownloader
+from localreel.domain.downloader import AbstractDownloader, DownloadResult
 from localreel.domain.value_objects import VideoStatus
 from localreel.service_layer.download_service import DownloadService
-from tests.factories import VideoFactory
+from tests.factories import SourceMetadataFactory, VideoFactory
 
 
 class FakeDownloader(AbstractDownloader):
@@ -18,11 +18,15 @@ class FakeDownloader(AbstractDownloader):
         self.downloaded: list[str] = []
         self._error = error
 
-    def download(self, *, url: str, video_id: UUID) -> str:
+    def download(self, *, url: str, video_id: UUID) -> DownloadResult:
         self.downloaded.append(url)
         if self._error is not None:
             raise self._error
-        return f"/downloads/{video_id}.mp4"
+        return DownloadResult(
+            file_path=f"{video_id}.webm",
+            thumbnail_path=f"{video_id}.webp",
+            metadata=SourceMetadataFactory.build(),
+        )
 
 
 class TestDownloadService:
@@ -38,7 +42,9 @@ class TestDownloadService:
         assert downloader.downloaded == ["https://youtu.be/jNQXAC9IVRw"]
         row = session.get_one(VideoORM, video_id)
         assert row.status is VideoStatus.READY
-        assert row.file_path == f"/downloads/{video_id}.mp4"
+        assert row.file_path == f"{video_id}.webm"
+        assert row.thumbnail_path == f"{video_id}.webp"
+        assert row.source_title == "Me at the zoo"
 
     def test_marks_the_video_failed_when_the_download_raises(
         self, container: Container, session: Session

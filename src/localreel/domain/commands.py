@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from localreel.domain.messages import Command
+from localreel.domain.value_objects import SourceMetadata
 
 
 @dataclass(frozen=True)
@@ -18,6 +19,8 @@ class StartDownload(Command):
 class MarkReady(Command):
     video_id: UUID
     file_path: str
+    thumbnail_path: str | None
+    metadata: SourceMetadata
 
 
 @dataclass(frozen=True)

@@ -6,7 +6,7 @@ from localreel.domain.events import VideoCreated, VideoUpdated
 from localreel.domain.exceptions import InvalidStatusTransition, UnsupportedSource
 from localreel.domain.models.video import Video
 from localreel.domain.value_objects import VideoSource, VideoStatus
-from tests.factories import VideoFactory
+from tests.factories import SourceMetadataFactory, VideoFactory
 
 
 class TestCreate:
@@ -39,14 +39,17 @@ class TestDownloadTransitions:
 
         assert video.status is VideoStatus.DOWNLOADING
 
-    def test_mark_ready_keeps_the_file_path(self) -> None:
+    def test_mark_ready_keeps_the_download_result(self) -> None:
         video = VideoFactory.build()
         video.start_download()
+        metadata = SourceMetadataFactory.build()
 
-        video.mark_ready("/downloads/a.mp4")
+        video.mark_ready(file_path="a.webm", thumbnail_path="a.webp", metadata=metadata)
 
         assert video.status is VideoStatus.READY
-        assert video.file_path == "/downloads/a.mp4"
+        assert video.file_path == "a.webm"
+        assert video.thumbnail_path == "a.webp"
+        assert video.source_metadata == metadata
 
     def test_mark_failed_keeps_the_reason(self) -> None:
         video = VideoFactory.build()
@@ -61,7 +64,11 @@ class TestDownloadTransitions:
         video = VideoFactory.build()
 
         video.start_download()
-        video.mark_ready("/downloads/a.mp4")
+        video.mark_ready(
+            file_path="a.webm",
+            thumbnail_path=None,
+            metadata=SourceMetadataFactory.build(),
+        )
 
         assert video.events == [
             VideoCreated(video),
@@ -76,14 +83,25 @@ class TestDownloadTransitions:
         with pytest.raises(InvalidStatusTransition):
             video.start_download()
 
-    @pytest.mark.parametrize("finish", ["mark_ready", "mark_failed"])
-    def test_finishing_rejects_a_video_that_is_not_downloading(
-        self, finish: str
-    ) -> None:
+    def test_mark_ready_rejects_a_video_that_is_not_downloading(self) -> None:
         video = VideoFactory.build()
 
         with pytest.raises(InvalidStatusTransition):
-            getattr(video, finish)("x")
+            video.mark_ready(
+                file_path="a.webm",
+                thumbnail_path=None,
+                metadata=SourceMetadataFactory.build(),
+            )
+
+        assert video.status is VideoStatus.PENDING
+        assert video.source_metadata is None
+        assert video.events == [VideoCreated(video)]
+
+    def test_mark_failed_rejects_a_video_that_is_not_downloading(self) -> None:
+        video = VideoFactory.build()
+
+        with pytest.raises(InvalidStatusTransition):
+            video.mark_failed("Video unavailable")
 
         assert video.status is VideoStatus.PENDING
         assert video.events == [VideoCreated(video)]
