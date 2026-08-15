@@ -16,6 +16,7 @@ from localreel.service_layer.handlers.commands import (
 from localreel.service_layer.handlers.events import AddVideoHandler, SaveVideoHandler
 from localreel.service_layer.message_bus import MessageBus
 from localreel.settings import Settings
+from localreel.views.videos import VideoView
 
 
 class Container(containers.DeclarativeContainer):
@@ -55,3 +56,4 @@ class Container(containers.DeclarativeContainer):
     download_service = providers.Factory(
         DownloadService, uow=uow, message_bus=message_bus, downloader=downloader
     )
+    video_view = providers.Factory(VideoView, session_factory=session_factory)

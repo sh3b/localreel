@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from localreel.adapters.orm import VideoORM
 from localreel.adapters.repository import PostgresVideoRepository
 from localreel.domain.value_objects import VideoStatus
+from tests.factories import SourceMetadataFactory, VideoFactory
 
 
 class TestSubmitURL:
@@ -51,3 +52,37 @@ class TestSubmitURL:
             "detail": "Unsupported video source: https://vimeo.com/12345"
         }
         assert session.scalars(select(VideoORM)).all() == []
+
+
+class TestListVideos:
+    def test_returns_the_ready_videos_as_cards(
+        self, client: TestClient, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
+        repository.add(video)
+        video.start_download()
+        video.mark_ready(
+            file_path=f"{video.id}.webm",
+            thumbnail_path=f"{video.id}.webp",
+            metadata=SourceMetadataFactory.build(),
+        )
+        repository.save(video)
+        session.commit()
+
+        response = client.get("/videos")
+
+        assert response.status_code == 200
+        [card] = response.json()
+        assert card["id"] == str(video.id)
+        assert card["title"] == "Me at the zoo"
+        assert card["source"] == "YOUTUBE"
+        assert card["playback_url"] == f"/media/{video.id}.webm"
+
+    def test_returns_an_empty_list_without_ready_videos(
+        self, client: TestClient
+    ) -> None:
+        response = client.get("/videos")
+
+        assert response.status_code == 200
+        assert response.json() == []

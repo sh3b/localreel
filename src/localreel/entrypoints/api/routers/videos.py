@@ -8,6 +8,8 @@ from localreel.domain.commands import SubmitURL
 from localreel.domain.unit_of_work import AbstractUnitOfWork
 from localreel.entrypoints.api.schemas.videos import SubmitURLRequest
 from localreel.service_layer.message_bus import MessageBus
+from localreel.views.dtos import VideoCard
+from localreel.views.videos import VideoView
 
 router = APIRouter()
 
@@ -21,3 +23,11 @@ def submit_url(
 ) -> None:
     with uow:
         bus.handle(SubmitURL(url=body.url))
+
+
+@router.get("/videos")
+@inject
+def list_videos(
+    view: Annotated[VideoView, Depends(Provide[Container.video_view])],
+) -> list[VideoCard]:
+    return view.list_videos()
