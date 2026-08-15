@@ -42,7 +42,7 @@ class MarkDownloadedHandler:
 
     def __call__(self, cmd: MarkDownloaded) -> list[Event]:
         video = self._uow.videos.get(cmd.video_id)
-        video.mark_downloaded(cmd.original_path)
+        video.mark_downloaded(cmd.original_path, cmd.source_metadata)
         return video.collect_events()
 
 
@@ -52,7 +52,13 @@ class MarkReadyHandler:
 
     def __call__(self, cmd: MarkReady) -> list[Event]:
         video = self._uow.videos.get(cmd.video_id)
-        video.mark_ready(cmd.playback_path, cmd.thumbnail_path)
+        video.mark_ready(
+            cmd.playback_path,
+            cmd.thumbnail_path,
+            cmd.duration_sec,
+            cmd.width,
+            cmd.height,
+        )
         return video.collect_events()
 
 

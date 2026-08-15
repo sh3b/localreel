@@ -13,6 +13,7 @@ from localreel.domain.events import (
 from localreel.domain.exceptions import InvalidStatusTransition
 from localreel.domain.messages import Event
 from localreel.domain.types import VideoSource, VideoStatus, VideoVisibility
+from localreel.domain.value_objects.source_metadata import SourceMetadata
 
 
 class Video:
@@ -48,6 +49,9 @@ class Video:
         description: str | None,
         tags: list[str],
         duration_sec: int | None,
+        width: int | None,
+        height: int | None,
+        source_metadata: SourceMetadata | None,
         playback_path: str | None,
         thumbnail_path: str | None,
         original_path: str | None,
@@ -69,6 +73,9 @@ class Video:
         self.description = description
         self.tags = tags
         self.duration_sec = duration_sec
+        self.width = width
+        self.height = height
+        self._store_source_metadata(source_metadata)
         self.playback_path = playback_path
         self.thumbnail_path = thumbnail_path
         self.original_path = original_path
@@ -79,6 +86,33 @@ class Video:
         self.error_message = error_message
 
         self.events: list[Event] = []
+
+    # --- source metadata ---
+
+    def _store_source_metadata(self, metadata: SourceMetadata | None) -> None:
+        self.source_id = metadata.source_id if metadata else None
+        self.source_title = metadata.title if metadata else None
+        self.source_description = metadata.description if metadata else None
+        self.source_uploader = metadata.uploader if metadata else None
+        self.source_uploader_id = metadata.uploader_id if metadata else None
+        self.source_published_at = metadata.published_at if metadata else None
+        self.source_view_count = metadata.view_count if metadata else None
+        self.source_raw = metadata.raw if metadata else None
+
+    @property
+    def source_metadata(self) -> SourceMetadata | None:
+        if self.source_id is None:
+            return None
+        return SourceMetadata(
+            source_id=self.source_id,
+            title=self.source_title,
+            description=self.source_description,
+            uploader=self.source_uploader,
+            uploader_id=self.source_uploader_id,
+            published_at=self.source_published_at,
+            view_count=self.source_view_count,
+            raw=self.source_raw or {},
+        )
 
     @classmethod
     def create(
@@ -105,6 +139,9 @@ class Video:
             description=None,
             tags=[],
             duration_sec=None,
+            width=None,
+            height=None,
+            source_metadata=None,
             playback_path=None,
             thumbnail_path=None,
             original_path=None,
@@ -129,19 +166,33 @@ class Video:
     def mark_downloading(self) -> None:
         self._transition(VideoStatus.DOWNLOADING)
 
-    def mark_downloaded(self, original_path: str) -> None:
+    def mark_downloaded(
+        self, original_path: str, source_metadata: SourceMetadata | None = None
+    ) -> None:
         self._transition(VideoStatus.DOWNLOADED)
         self.original_path = original_path
         self.source_file_available = True
+        if source_metadata is not None:
+            self._store_source_metadata(source_metadata)
         self.events.append(VideoDownloaded(video_id=self.id))
 
     def mark_transcoding(self) -> None:
         self._transition(VideoStatus.TRANSCODING)
 
-    def mark_ready(self, playback_path: str, thumbnail_path: str) -> None:
+    def mark_ready(
+        self,
+        playback_path: str,
+        thumbnail_path: str,
+        duration_sec: int | None = None,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> None:
         self._transition(VideoStatus.READY)
         self.playback_path = playback_path
         self.thumbnail_path = thumbnail_path
+        self.duration_sec = duration_sec
+        self.width = width
+        self.height = height
         self.events.append(VideoReady(video_id=self.id))
 
     def mark_failed(self, reason: str) -> None:

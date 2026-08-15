@@ -7,6 +7,9 @@ from uuid import UUID
 class TranscodeResult:
     playback_path: str
     thumbnail_path: str
+    duration_sec: int | None
+    width: int | None
+    height: int | None
 
 
 class AbstractTranscoder(ABC):

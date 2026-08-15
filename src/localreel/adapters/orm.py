@@ -4,8 +4,10 @@ from typing import Any
 
 from sqlalchemy import (
     ARRAY,
+    BigInteger,
     Boolean,
     Column,
+    DateTime,
     Enum,
     Float,
     Integer,
@@ -16,6 +18,7 @@ from sqlalchemy import (
     Uuid,
     event,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import registry
 
 from localreel.domain.entities.download_job import DownloadJob
@@ -42,6 +45,18 @@ videos = Table(
     Column("description", Text, nullable=True),
     Column("tags", ARRAY(Text), nullable=False),
     Column("duration_sec", Integer, nullable=True),
+    Column("width", Integer, nullable=True),
+    Column("height", Integer, nullable=True),
+    # Source layer, exposed as Video.source_metadata. Null for LOCAL uploads.
+    Column("source_id", Text, nullable=True),
+    Column("source_title", Text, nullable=True),
+    Column("source_description", Text, nullable=True),
+    Column("source_uploader", Text, nullable=True),
+    Column("source_uploader_id", Text, nullable=True),
+    Column("source_published_at", DateTime(timezone=True), nullable=True),
+    # BigInteger: YouTube view counts outgrow int4.
+    Column("source_view_count", BigInteger, nullable=True),
+    Column("source_raw", JSONB, nullable=True),
     Column("playback_path", Text, nullable=True),
     Column("thumbnail_path", Text, nullable=True),
     Column("original_path", Text, nullable=True),

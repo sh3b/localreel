@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import subprocess
@@ -34,9 +35,39 @@ class FfmpegTranscoder(AbstractTranscoder):
         shutil.rmtree(out_dir, ignore_errors=True)
         os.replace(staging, out_dir)
 
+        duration_sec, width, height = self._probe_media(original_path)
         return TranscodeResult(
             playback_path=str(out_dir / f"{video_id}.mp4"),
             thumbnail_path=str(out_dir / f"{video_id}-thumbnail.jpg"),
+            duration_sec=duration_sec,
+            width=width,
+            height=height,
+        )
+
+    def _probe_media(self, path: str) -> tuple[int | None, int | None, int | None]:
+        """Read from the file, not yt-dlp, so LOCAL uploads work the same."""
+        result = self._run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=width,height:format=duration",
+                "-of",
+                "json",
+                path,
+            ]
+        )
+        probed = json.loads(result.stdout)
+        stream = (probed.get("streams") or [{}])[0]
+        duration = probed.get("format", {}).get("duration")
+        return (
+            # Sources report fractional seconds (77.855); the column is integer.
+            round(float(duration)) if duration is not None else None,
+            stream.get("width"),
+            stream.get("height"),
         )
 
     def _write_playback(self, original_path: str, destination: Path) -> None:

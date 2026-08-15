@@ -25,7 +25,11 @@ class _FakeTranscoder(AbstractTranscoder):
 
 
 _RESULT = TranscodeResult(
-    playback_path="/media/x/x.mp4", thumbnail_path="/media/x/x-thumbnail.jpg"
+    playback_path="/media/x/x.mp4",
+    thumbnail_path="/media/x/x-thumbnail.jpg",
+    duration_sec=58,
+    width=1080,
+    height=1920,
 )
 
 
@@ -49,6 +53,8 @@ class TestTranscodeNextDownloaded:
             assert loaded.status is VideoStatus.READY
             assert loaded.playback_path == _RESULT.playback_path
             assert loaded.thumbnail_path == _RESULT.thumbnail_path
+            assert loaded.duration_sec == 58
+            assert (loaded.width, loaded.height) == (1080, 1920)
 
     def test_transcode_failure_marks_failed(self, container: Container) -> None:
         uow = container.uow()

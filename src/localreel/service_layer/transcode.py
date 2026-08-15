@@ -55,4 +55,7 @@ def _transcode(
         video_id=video_id,
         playback_path=result.playback_path,
         thumbnail_path=result.thumbnail_path,
+        duration_sec=result.duration_sec,
+        width=result.width,
+        height=result.height,
     )

@@ -48,8 +48,12 @@ def _download(
     downloader: AbstractDownloader, video_id: UUID, url: str
 ) -> MarkDownloaded | MarkFailed:
     try:
-        original_path = downloader.download(url=url, video_id=video_id)
+        result = downloader.download(url=url, video_id=video_id)
     except Exception as exc:
         logger.exception("download failed for video %s", video_id)
         return MarkFailed(video_id=video_id, reason=str(exc))
-    return MarkDownloaded(video_id=video_id, original_path=original_path)
+    return MarkDownloaded(
+        video_id=video_id,
+        original_path=result.original_path,
+        source_metadata=result.source_metadata,
+    )

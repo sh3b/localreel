@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from uuid import uuid7
 
 import pytest
@@ -13,6 +14,7 @@ from localreel.containers import Container
 from localreel.domain.entities.download_job import DownloadJob
 from localreel.domain.exceptions import VideoNotFound
 from localreel.domain.types import VideoSource, VideoStatus
+from localreel.domain.value_objects.source_metadata import SourceMetadata
 from tests.factories.video import VideoFactory
 
 
@@ -43,6 +45,31 @@ class TestPostgresVideoRepository:
         assert loaded.view_count == 0
         assert loaded.source_file_available is False
         assert loaded.events == []
+
+    def test_source_metadata_survives_a_real_round_trip(
+        self, container: Container, session: Session
+    ) -> None:
+        metadata = SourceMetadata(
+            source_id="10000000000000001",
+            title="1.2M views · 3K reactions | A Reel Caption | A Reel Uploader",
+            description="A reel caption with an emoji 🥹",
+            uploader="A Reel Uploader",
+            uploader_id="100000000000001",
+            published_at=datetime(2026, 8, 7, 9, 46, 11, tzinfo=UTC),
+            view_count=1234567,
+            raw={"id": "10000000000000001", "extractor": "facebook", "fps": None},
+        )
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory(source=VideoSource.FACEBOOK)
+        video.mark_downloading()
+        video.mark_downloaded("/downloads/v.mp4", metadata)
+        repository.add(video)
+        session.commit()
+
+        other = PostgresVideoRepository(container.session_factory()())
+        loaded = other.get(video.id)
+
+        assert loaded.source_metadata == metadata
 
     def test_get_unknown_id_raises(self, session: Session) -> None:
         repository = PostgresVideoRepository(session)

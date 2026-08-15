@@ -157,6 +157,22 @@ class TestFfmpegTranscoder:
         # Copied verbatim rather than regenerated from a frame.
         assert Path(result.thumbnail_path).read_bytes() == b"not really a jpeg"
 
+    def test_reports_the_probed_media_properties(
+        self, tmp_path: Path, media_dir: Path
+    ) -> None:
+        source = _make_source(
+            tmp_path / "src.mp4",
+            video=["-c:v", "libx264", "-pix_fmt", "yuv420p"],
+            audio=["-c:a", "aac"],
+        )
+
+        result = FfmpegTranscoder(str(media_dir), TIMEOUT_SEC).transcode(
+            video_id=uuid7(), original_path=str(source)
+        )
+
+        assert (result.width, result.height) == (64, 64)
+        assert result.duration_sec == 1
+
     def test_leaves_no_staging_directory_behind(
         self, tmp_path: Path, media_dir: Path
     ) -> None:
