@@ -7,6 +7,8 @@ from localreel.domain.commands import SubmitURL
 from localreel.domain.exceptions import UnsupportedSource
 from localreel.entrypoints.api.schemas.videos import SubmitURLRequest
 from localreel.service_layer.message_bus import MessageBus
+from localreel.service_layer.views.dtos import VideoCard
+from localreel.service_layer.views.videos import VideoView
 
 router = APIRouter()
 
@@ -26,3 +28,11 @@ def submit_url(
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
             ) from exc
+
+
+@router.get("/videos/explore")
+@inject
+def explore(
+    video_view: VideoView = Depends(Provide[Container.video_view]),
+) -> list[VideoCard]:
+    return video_view.all_videos()

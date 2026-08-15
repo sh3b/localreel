@@ -24,6 +24,7 @@ from localreel.service_layer.handlers.commands import (
 )
 from localreel.service_layer.message_bus import MessageBus
 from localreel.service_layer.transcode import transcode_next_downloaded
+from localreel.service_layer.views.videos import VideoView
 from localreel.settings import Settings
 
 
@@ -83,3 +84,5 @@ class Container(containers.DeclarativeContainer):
         transcoder=transcoder,
         downloads_dir=settings.provided.downloads_dir,
     )
+
+    video_view = providers.Singleton(VideoView, session_factory=session_factory)
