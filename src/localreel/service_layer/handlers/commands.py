@@ -1,3 +1,4 @@
+import logging
 from uuid import uuid7
 
 from localreel.domain.commands import MarkFailed, MarkReady, StartDownload, SubmitURL
@@ -5,6 +6,8 @@ from localreel.domain.messages import Event
 from localreel.domain.models.video import Video
 from localreel.domain.unit_of_work import AbstractUnitOfWork
 from localreel.domain.value_objects import SourceURL
+
+logger = logging.getLogger(__name__)
 
 
 class SubmitURLHandler:
@@ -39,6 +42,12 @@ class MarkReadyHandler:
             file_path=cmd.file_path,
             thumbnail_path=cmd.thumbnail_path,
             metadata=cmd.metadata,
+        )
+        logger.info(
+            "video %s from %s is ready at %s",
+            video.id,
+            video.source_url,
+            video.file_path,
         )
         return video.events
 
