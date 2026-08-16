@@ -30,6 +30,10 @@ class YtDlpDownloader(AbstractDownloader):
             info = ydl.sanitize_info(ydl.extract_info(url, download=True))
         return self._result(info)
 
+    def discard(self, *, video_id: UUID) -> None:
+        for path in self._downloads_dir.glob(f"{video_id}.*"):
+            path.unlink(missing_ok=True)
+
     def _options(self, video_id: UUID) -> dict[str, Any]:
         return {
             "outtmpl": str(self._downloads_dir / f"{video_id}.%(ext)s"),

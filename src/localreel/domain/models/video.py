@@ -1,7 +1,7 @@
 from typing import ClassVar
 from uuid import UUID
 
-from localreel.domain.events import VideoCreated, VideoUpdated
+from localreel.domain.events import VideoCreated, VideoFailed, VideoUpdated
 from localreel.domain.exceptions import InvalidStatusTransition
 from localreel.domain.messages import Event
 from localreel.domain.value_objects import (
@@ -77,15 +77,18 @@ class Video:
         self.source_metadata = metadata
 
     def mark_failed(self, reason: str) -> None:
-        self._transition(VideoStatus.DOWNLOADING, VideoStatus.FAILED)
-        self.error = reason
+        self._fail(reason)
 
     def reset_download(self) -> None:
         if self.attempts >= self._MAX_ATTEMPTS:
-            self._transition(VideoStatus.DOWNLOADING, VideoStatus.FAILED)
-            self.error = f"Download interrupted {self.attempts} times"
+            self._fail(f"Download interrupted {self.attempts} times")
             return
         self._transition(VideoStatus.DOWNLOADING, VideoStatus.PENDING)
+
+    def _fail(self, reason: str) -> None:
+        self._transition(VideoStatus.DOWNLOADING, VideoStatus.FAILED)
+        self.error = reason
+        self.events.append(VideoFailed(video_id=self.id))
 
     def _transition(self, expected: VideoStatus, to: VideoStatus) -> None:
         if self.status is not expected:

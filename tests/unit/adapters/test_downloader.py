@@ -35,6 +35,28 @@ class TestYtDlpDownloader:
                 url="http://169.254.169.254/latest/meta-data", video_id=uuid7()
             )
 
+    def test_discard_deletes_every_file_of_the_video_and_only_those(
+        self, tmp_path: Path
+    ) -> None:
+        video_id, other_id = uuid7(), uuid7()
+        for name in (
+            f"{video_id}.f401.mp4.part",
+            f"{video_id}.f251.webm",
+            f"{video_id}.webm.ytdl",
+            f"{video_id}.webp",
+            f"{other_id}.webm",
+        ):
+            (tmp_path / name).touch()
+
+        YtDlpDownloader(tmp_path).discard(video_id=video_id)
+
+        assert [path.name for path in tmp_path.iterdir()] == [f"{other_id}.webm"]
+
+    def test_discard_without_files_does_nothing(self, tmp_path: Path) -> None:
+        YtDlpDownloader(tmp_path).discard(video_id=uuid7())
+
+        assert list(tmp_path.iterdir()) == []
+
 
 class TestDownloadResult:
     INFO: ClassVar[dict[str, Any]] = {

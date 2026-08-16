@@ -17,3 +17,8 @@ class AbstractDownloader(ABC):
     def download(self, *, url: str, video_id: UUID) -> DownloadResult:
         """Downloads the video; paths are relative to the downloads directory."""
         raise NotImplementedError
+
+    @abstractmethod
+    def discard(self, *, video_id: UUID) -> None:
+        """Deletes every file the video's downloads left, finished or not."""
+        raise NotImplementedError

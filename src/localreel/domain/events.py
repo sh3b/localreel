@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 from localreel.domain.messages import Event
 
@@ -15,3 +16,8 @@ class VideoCreated(Event):
 @dataclass(frozen=True)
 class VideoUpdated(Event):
     video: Video
+
+
+@dataclass(frozen=True)
+class VideoFailed(Event):
+    video_id: UUID
