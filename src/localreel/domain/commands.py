@@ -16,6 +16,11 @@ class StartDownload(Command):
 
 
 @dataclass(frozen=True)
+class ResetDownload(Command):
+    video_id: UUID
+
+
+@dataclass(frozen=True)
 class MarkReady(Command):
     video_id: UUID
     file_path: str

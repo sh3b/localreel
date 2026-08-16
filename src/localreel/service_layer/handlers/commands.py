@@ -1,7 +1,13 @@
 import logging
 from uuid import uuid7
 
-from localreel.domain.commands import MarkFailed, MarkReady, StartDownload, SubmitURL
+from localreel.domain.commands import (
+    MarkFailed,
+    MarkReady,
+    ResetDownload,
+    StartDownload,
+    SubmitURL,
+)
 from localreel.domain.messages import Event
 from localreel.domain.models.video import Video
 from localreel.domain.unit_of_work import AbstractUnitOfWork
@@ -29,6 +35,23 @@ class StartDownloadHandler:
     def __call__(self, cmd: StartDownload) -> list[Event]:
         video = self._uow.videos.get(cmd.video_id, lock=True)
         video.start_download()
+        return video.events
+
+
+class ResetDownloadHandler:
+    def __init__(self, uow: AbstractUnitOfWork) -> None:
+        self._uow = uow
+
+    def __call__(self, cmd: ResetDownload) -> list[Event]:
+        video = self._uow.videos.get(cmd.video_id, lock=True)
+        video.reset_download()
+        logger.info(
+            "video %s from %s was interrupted on attempt %s; now %s",
+            video.id,
+            video.source_url,
+            video.attempts,
+            video.status,
+        )
         return video.events
 
 

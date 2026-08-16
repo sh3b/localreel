@@ -77,6 +77,7 @@ class TestPostgresVideoRepository:
         with session_factory() as other_session:
             loaded = PostgresVideoRepository(other_session).get(video.id, lock=False)
             assert loaded.status is VideoStatus.READY
+            assert loaded.attempts == 1
             assert loaded.file_path == "a.webm"
             assert loaded.thumbnail_path == "a.webp"
             assert loaded.source_metadata == metadata
@@ -102,3 +103,20 @@ class TestPostgresVideoRepository:
         self, session: Session
     ) -> None:
         assert PostgresVideoRepository(session).next_pending() is None
+
+    def test_downloading_returns_every_downloading_video(
+        self, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        pending = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
+        first = VideoFactory.build(source_url="https://youtu.be/dQw4w9WgXcQ")
+        second = VideoFactory.build(source_url="https://youtu.be/9bZkp7q19f0")
+        for video in (pending, first, second):
+            repository.add(video)
+        for video in (first, second):
+            video.start_download()
+            repository.save(video)
+
+        downloading = repository.downloading()
+
+        assert {video.id for video in downloading} == {first.id, second.id}

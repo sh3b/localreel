@@ -53,6 +53,12 @@ class PostgresVideoRepository(AbstractVideoRepository):
         ).first()
         return None if row is None else self._to_domain(row)
 
+    def downloading(self) -> list[Video]:
+        rows = self._session.scalars(
+            select(VideoORM).where(VideoORM.status == VideoStatus.DOWNLOADING)
+        )
+        return [self._to_domain(row) for row in rows]
+
     def save(self, video: Video) -> None:
         self._session.merge(self._to_orm(video))
 
@@ -75,6 +81,7 @@ class PostgresVideoRepository(AbstractVideoRepository):
             source_url=row.source_url,
             source_key=row.source_key,
             status=row.status,
+            attempts=row.attempts,
             file_path=row.file_path,
             thumbnail_path=row.thumbnail_path,
             source_metadata=source_metadata,
@@ -89,6 +96,7 @@ class PostgresVideoRepository(AbstractVideoRepository):
             source_url=video.source_url,
             source_key=video.source_key,
             status=video.status,
+            attempts=video.attempts,
             file_path=video.file_path,
             thumbnail_path=video.thumbnail_path,
             error=video.error,

@@ -28,6 +28,7 @@ class VideoORM(Base):
     status: Mapped[VideoStatus] = mapped_column(
         Enum(VideoStatus, name="video_status", native_enum=False, length=32)
     )
+    attempts: Mapped[int] = mapped_column(Integer, server_default="0")
     file_path: Mapped[str | None] = mapped_column(Text)
     thumbnail_path: Mapped[str | None] = mapped_column(Text)
     source_title: Mapped[str | None] = mapped_column(Text)

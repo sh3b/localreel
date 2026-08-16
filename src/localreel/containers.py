@@ -4,12 +4,19 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from localreel.adapters.downloader import YtDlpDownloader
 from localreel.adapters.unit_of_work import PostgresUnitOfWork
-from localreel.domain.commands import MarkFailed, MarkReady, StartDownload, SubmitURL
+from localreel.domain.commands import (
+    MarkFailed,
+    MarkReady,
+    ResetDownload,
+    StartDownload,
+    SubmitURL,
+)
 from localreel.domain.events import VideoCreated, VideoUpdated
 from localreel.service_layer.download_service import DownloadService
 from localreel.service_layer.handlers.commands import (
     MarkFailedHandler,
     MarkReadyHandler,
+    ResetDownloadHandler,
     StartDownloadHandler,
     SubmitURLHandler,
 )
@@ -38,6 +45,7 @@ class Container(containers.DeclarativeContainer):
             {
                 SubmitURL: providers.Factory(SubmitURLHandler, uow=uow),
                 StartDownload: providers.Factory(StartDownloadHandler, uow=uow),
+                ResetDownload: providers.Factory(ResetDownloadHandler, uow=uow),
                 MarkReady: providers.Factory(MarkReadyHandler, uow=uow),
                 MarkFailed: providers.Factory(MarkFailedHandler, uow=uow),
             }

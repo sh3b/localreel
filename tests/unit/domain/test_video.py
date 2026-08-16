@@ -20,6 +20,7 @@ class TestCreate:
         assert video.source_url == "https://youtu.be/jNQXAC9IVRw"
         assert video.source_key == "youtube:jNQXAC9IVRw"
         assert video.status is VideoStatus.PENDING
+        assert video.attempts == 0
 
     def test_registers_that_it_was_created(self) -> None:
         video = Video.create(id=uuid7(), source_url="https://youtu.be/jNQXAC9IVRw")
@@ -38,6 +39,7 @@ class TestDownloadTransitions:
         video.start_download()
 
         assert video.status is VideoStatus.DOWNLOADING
+        assert video.attempts == 1
 
     def test_mark_ready_keeps_the_download_result(self) -> None:
         video = VideoFactory.build()
@@ -102,6 +104,38 @@ class TestDownloadTransitions:
 
         with pytest.raises(InvalidStatusTransition):
             video.mark_failed("Video unavailable")
+
+        assert video.status is VideoStatus.PENDING
+        assert video.events == [VideoCreated(video)]
+
+
+class TestResetDownload:
+    def test_puts_an_interrupted_video_back_to_pending(self) -> None:
+        video = VideoFactory.build()
+        video.start_download()
+
+        video.reset_download()
+
+        assert video.status is VideoStatus.PENDING
+        assert video.attempts == 1
+
+    def test_fails_the_video_once_its_attempts_are_used_up(self) -> None:
+        video = VideoFactory.build()
+        for _ in range(2):
+            video.start_download()
+            video.reset_download()
+        video.start_download()
+
+        video.reset_download()
+
+        assert video.status is VideoStatus.FAILED
+        assert video.error == "Download interrupted 3 times"
+
+    def test_rejects_a_video_that_is_not_downloading(self) -> None:
+        video = VideoFactory.build()
+
+        with pytest.raises(InvalidStatusTransition):
+            video.reset_download()
 
         assert video.status is VideoStatus.PENDING
         assert video.events == [VideoCreated(video)]

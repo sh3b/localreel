@@ -16,8 +16,15 @@ class FakeDownloadService(DownloadService):
     def __init__(self, results: list[bool]) -> None:
         self._results = iter(results)
         self.calls = 0
+        self.resets_before_first_call: int | None = None
+        self._resets = 0
+
+    def reset_interrupted_downloads(self) -> None:
+        self._resets += 1
 
     def download_next(self) -> bool:
+        if self.calls == 0:
+            self.resets_before_first_call = self._resets
         self.calls += 1
         try:
             return next(self._results)
@@ -52,6 +59,16 @@ class TestWorker:
 
         assert service.calls == 4
         assert sleeps == []
+
+    def test_resets_interrupted_downloads_once_before_the_first_claim(
+        self, sleeps: list[float]
+    ) -> None:
+        service = FakeDownloadService([True, False])
+
+        with pytest.raises(StopLoop):
+            Worker(service=service, poll_interval_sec=5).run()
+
+        assert service.resets_before_first_call == 1
 
 
 class TestMain:

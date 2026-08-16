@@ -1,6 +1,11 @@
 import logging
 
-from localreel.domain.commands import MarkFailed, MarkReady, StartDownload
+from localreel.domain.commands import (
+    MarkFailed,
+    MarkReady,
+    ResetDownload,
+    StartDownload,
+)
 from localreel.domain.downloader import AbstractDownloader
 from localreel.domain.exceptions import InvalidStatusTransition
 from localreel.domain.unit_of_work import AbstractUnitOfWork
@@ -20,6 +25,13 @@ class DownloadService:
         self._uow = uow
         self._bus = message_bus
         self._downloader = downloader
+
+    def reset_interrupted_downloads(self) -> None:
+        with self._uow:
+            videos = self._uow.videos.downloading()
+        for video in videos:
+            with self._uow:
+                self._bus.handle(ResetDownload(video_id=video.id))
 
     def download_next(self) -> bool:
         with self._uow:

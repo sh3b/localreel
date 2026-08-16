@@ -7,7 +7,13 @@ from sqlalchemy.orm import Session
 from localreel.adapters.orm import VideoORM
 from localreel.adapters.repository import PostgresVideoRepository
 from localreel.containers import Container
-from localreel.domain.commands import MarkFailed, MarkReady, StartDownload, SubmitURL
+from localreel.domain.commands import (
+    MarkFailed,
+    MarkReady,
+    ResetDownload,
+    StartDownload,
+    SubmitURL,
+)
 from localreel.domain.exceptions import DuplicateVideo, UnsupportedSource, VideoNotFound
 from localreel.domain.value_objects import VideoSource, VideoStatus
 from tests.factories import SourceMetadataFactory, VideoFactory
@@ -76,6 +82,18 @@ class TestDownloadCommands:
             container.message_bus().handle(StartDownload(video_id=video_id))
 
         assert session.get_one(VideoORM, video_id).status is VideoStatus.DOWNLOADING
+
+    def test_reset_download_puts_the_video_back_to_pending(
+        self, container: Container, session: Session
+    ) -> None:
+        video_id = self._downloading_video(container)
+
+        with container.uow():
+            container.message_bus().handle(ResetDownload(video_id=video_id))
+
+        row = session.get_one(VideoORM, video_id)
+        assert row.status is VideoStatus.PENDING
+        assert row.attempts == 1
 
     def test_mark_ready_stores_the_download_result(
         self, container: Container, session: Session

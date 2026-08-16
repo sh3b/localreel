@@ -78,6 +78,31 @@ class TestDownloadService:
         assert downloader.downloaded == []
         assert session.get_one(VideoORM, video.id).status is VideoStatus.DOWNLOADING
 
+    def test_reset_puts_interrupted_downloads_back_to_pending(
+        self, container: Container, session: Session
+    ) -> None:
+        video_id = self._pending_video(container)
+        with container.uow():
+            container.message_bus().handle(StartDownload(video_id=video_id))
+
+        self._service(container, FakeDownloader()).reset_interrupted_downloads()
+
+        assert session.get_one(VideoORM, video_id).status is VideoStatus.PENDING
+
+    def test_reset_fails_a_video_whose_attempts_are_used_up(
+        self, container: Container, session: Session
+    ) -> None:
+        video_id = self._pending_video(container)
+        service = self._service(container, FakeDownloader())
+        for _ in range(3):
+            with container.uow():
+                container.message_bus().handle(StartDownload(video_id=video_id))
+            service.reset_interrupted_downloads()
+
+        row = session.get_one(VideoORM, video_id)
+        assert row.status is VideoStatus.FAILED
+        assert row.error == "Download interrupted 3 times"
+
     def test_does_nothing_without_pending_videos(self, container: Container) -> None:
         downloader = FakeDownloader()
 

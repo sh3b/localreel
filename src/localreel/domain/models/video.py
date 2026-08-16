@@ -1,3 +1,4 @@
+from typing import ClassVar
 from uuid import UUID
 
 from localreel.domain.events import VideoCreated, VideoUpdated
@@ -12,6 +13,8 @@ from localreel.domain.value_objects import (
 
 
 class Video:
+    _MAX_ATTEMPTS: ClassVar[int] = 3
+
     def __init__(
         self,
         *,
@@ -20,6 +23,7 @@ class Video:
         source_url: str,
         source_key: str,
         status: VideoStatus,
+        attempts: int,
         file_path: str | None,
         thumbnail_path: str | None,
         source_metadata: SourceMetadata | None,
@@ -30,6 +34,7 @@ class Video:
         self.source_url = source_url
         self.source_key = source_key
         self.status = status
+        self.attempts = attempts
         self.file_path = file_path
         self.thumbnail_path = thumbnail_path
         self.source_metadata = source_metadata
@@ -46,6 +51,7 @@ class Video:
             source_url=parsed.url,
             source_key=parsed.key,
             status=VideoStatus.PENDING,
+            attempts=0,
             file_path=None,
             thumbnail_path=None,
             source_metadata=None,
@@ -56,6 +62,7 @@ class Video:
 
     def start_download(self) -> None:
         self._transition(VideoStatus.PENDING, VideoStatus.DOWNLOADING)
+        self.attempts += 1
 
     def mark_ready(
         self,
@@ -73,10 +80,17 @@ class Video:
         self._transition(VideoStatus.DOWNLOADING, VideoStatus.FAILED)
         self.error = reason
 
+    def reset_download(self) -> None:
+        if self.attempts >= self._MAX_ATTEMPTS:
+            self._transition(VideoStatus.DOWNLOADING, VideoStatus.FAILED)
+            self.error = f"Download interrupted {self.attempts} times"
+            return
+        self._transition(VideoStatus.DOWNLOADING, VideoStatus.PENDING)
+
     def _transition(self, expected: VideoStatus, to: VideoStatus) -> None:
         if self.status is not expected:
             raise InvalidStatusTransition(
-                f"Video {self.id} is {self.status}, not {expected}; cannot become {to}"
+                f"Video {self.id} is {self.status}, expected {expected}; cannot become {to}"
             )
         self.status = to
         self.events.append(VideoUpdated(self))

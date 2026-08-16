@@ -11,6 +11,7 @@ class Worker:
         self._poll_interval_sec = poll_interval_sec
 
     def run(self) -> None:
+        self._service.reset_interrupted_downloads()
         while True:
             if not self._service.download_next():
                 time.sleep(self._poll_interval_sec)

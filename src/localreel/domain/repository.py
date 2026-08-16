@@ -26,6 +26,11 @@ class AbstractVideoRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def downloading(self) -> list[Video]:
+        """Every DOWNLOADING video."""
+        raise NotImplementedError
+
+    @abstractmethod
     def save(self, video: Video) -> None:
         """Writes the changes to a video loaded with get."""
         raise NotImplementedError

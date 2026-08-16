@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from localreel.adapters.orm import VideoORM
 from localreel.containers import Container
-from localreel.domain.commands import MarkFailed, MarkReady
+from localreel.domain.commands import MarkFailed, MarkReady, ResetDownload
 from localreel.domain.exceptions import InvalidStatusTransition
 from localreel.domain.value_objects import VideoStatus
 from tests.factories import SourceMetadataFactory, VideoFactory
@@ -51,15 +51,16 @@ class TestCommandLocking:
                 metadata=SourceMetadataFactory.build(),
             ),
             lambda video_id: MarkFailed(video_id=video_id, reason="unavailable"),
+            lambda video_id: ResetDownload(video_id=video_id),
         ],
-        ids=["MarkReady", "MarkFailed"],
+        ids=["MarkReady", "MarkFailed", "ResetDownload"],
     )
     def test_reads_the_status_a_concurrent_change_left_and_refuses(
         self,
         committing_container: Container,
         downloading_video_id: UUID,
         engine: Engine,
-        make_command: Callable[[UUID], MarkReady | MarkFailed],
+        make_command: Callable[[UUID], MarkReady | MarkFailed | ResetDownload],
     ) -> None:
         container = committing_container
         command = make_command(downloading_video_id)
