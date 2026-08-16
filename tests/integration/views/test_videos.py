@@ -1,8 +1,8 @@
-from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from localreel.adapters.orm import VideoORM
 from localreel.adapters.repository import PostgresVideoRepository
 from localreel.domain.models.video import Video
 from localreel.domain.value_objects import SourceMetadata, VideoSource
@@ -25,7 +25,7 @@ class TestListVideos:
         assert card.duration_sec == 19
         assert card.source is VideoSource.YOUTUBE
         assert card.source_url == "https://youtu.be/jNQXAC9IVRw"
-        assert card.saved_at == datetime.fromtimestamp(video.id.time / 1000, UTC)
+        assert card.saved_at == session.get_one(VideoORM, video.id).created_at
         assert card.playback_url == f"/media/{video.id}.webm"
         assert card.thumbnail_url == f"/media/{video.id}.webp"
 

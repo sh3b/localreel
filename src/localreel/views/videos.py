@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from typing import ClassVar
 from uuid import UUID
 
@@ -37,6 +36,7 @@ class VideoView:
                 VideoORM.source_url,
                 VideoORM.file_path,
                 VideoORM.thumbnail_path,
+                VideoORM.created_at,
             )
             .where(VideoORM.status == VideoStatus.READY)
             .limit(limit + 1)
@@ -71,7 +71,7 @@ class VideoView:
                     duration_sec=row.source_duration_sec,
                     source=row.source,
                     source_url=row.source_url,
-                    saved_at=datetime.fromtimestamp(row.id.time / 1000, UTC),
+                    saved_at=row.created_at,
                     playback_url=self._MEDIA_URL_PREFIX + row.file_path,
                     thumbnail_url=thumbnail_url,
                 )

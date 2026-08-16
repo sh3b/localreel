@@ -1,3 +1,6 @@
+from datetime import UTC, datetime
+from uuid import UUID
+
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -6,6 +9,8 @@ from localreel.containers import Container
 from localreel.domain.events import VideoFailed
 from localreel.domain.value_objects import VideoStatus
 from tests.factories import VideoFactory
+
+LONG_AGO = datetime(2000, 1, 1, tzinfo=UTC)
 
 
 class TestPostgresUnitOfWork:
@@ -94,6 +99,57 @@ class TestPostgresUnitOfWork:
 
             assert uow.collect_events() == [VideoFailed(video.id)]
             assert uow.collect_events() == []
+
+    def test_add_stamps_created_and_modified_at(
+        self, container: Container, session_factory: sessionmaker[Session]
+    ) -> None:
+        video = VideoFactory.build()
+
+        with container.uow() as uow:
+            uow.videos.add(video)
+
+        with session_factory() as session:
+            row = session.get_one(VideoORM, video.id)
+            assert row.modified_at == row.created_at
+
+    def test_a_saved_change_moves_modified_at_only(
+        self, container: Container, session_factory: sessionmaker[Session]
+    ) -> None:
+        video_id = self._added_long_ago(container, session_factory)
+
+        with container.uow() as uow:
+            uow.videos.get(video_id, lock=True).start_download()
+
+        with session_factory() as session:
+            row = session.get_one(VideoORM, video_id)
+            assert row.created_at == LONG_AGO
+            assert row.modified_at > LONG_AGO
+
+    def test_a_commit_without_a_change_keeps_modified_at(
+        self, container: Container, session_factory: sessionmaker[Session]
+    ) -> None:
+        video_id = self._added_long_ago(container, session_factory)
+
+        with container.uow() as uow:
+            uow.videos.get(video_id, lock=True)
+
+        with session_factory() as session:
+            assert session.get_one(VideoORM, video_id).modified_at == LONG_AGO
+
+    @staticmethod
+    def _added_long_ago(
+        container: Container, session_factory: sessionmaker[Session]
+    ) -> UUID:
+        # Each test runs in one transaction, where now() never moves: start
+        # from an old time so a change can be seen.
+        video = VideoFactory.build()
+        with container.uow() as uow:
+            uow.videos.add(video)
+        with session_factory() as session:
+            row = session.get_one(VideoORM, video.id)
+            row.created_at = row.modified_at = LONG_AGO
+            session.commit()
+        return video.id
 
     def test_commit_false_rolls_back_on_exit(
         self, container: Container, session_factory: sessionmaker[Session]
