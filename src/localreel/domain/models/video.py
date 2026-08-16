@@ -1,7 +1,7 @@
 from typing import ClassVar
 from uuid import UUID
 
-from localreel.domain.events import VideoCreated, VideoFailed, VideoUpdated
+from localreel.domain.events import VideoFailed
 from localreel.domain.exceptions import InvalidStatusTransition
 from localreel.domain.messages import Event
 from localreel.domain.value_objects import (
@@ -45,7 +45,7 @@ class Video:
     @classmethod
     def create(cls, *, id: UUID, source_url: str) -> Video:
         parsed = SourceURL.parse(source_url)
-        video = cls(
+        return cls(
             id=id,
             source=parsed.source,
             source_url=parsed.url,
@@ -57,8 +57,6 @@ class Video:
             source_metadata=None,
             error=None,
         )
-        video.events.append(VideoCreated(video))
-        return video
 
     def start_download(self) -> None:
         self._transition(VideoStatus.PENDING, VideoStatus.DOWNLOADING)
@@ -85,6 +83,14 @@ class Video:
             return
         self._transition(VideoStatus.DOWNLOADING, VideoStatus.PENDING)
 
+    def collect_events(self) -> list[Event]:
+        # Empty the list on handover: the unit of work collects after every
+        # handler, and the video stays tracked, so the next collection would
+        # hand these events over again.
+        events = self.events
+        self.events = []
+        return events
+
     def _fail(self, reason: str) -> None:
         self._transition(VideoStatus.DOWNLOADING, VideoStatus.FAILED)
         self.error = reason
@@ -96,4 +102,3 @@ class Video:
                 f"Video {self.id} is {self.status}, expected {expected}; cannot become {to}"
             )
         self.status = to
-        self.events.append(VideoUpdated(self))

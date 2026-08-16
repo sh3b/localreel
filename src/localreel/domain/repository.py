@@ -5,6 +5,9 @@ from localreel.domain.models.video import Video
 
 
 class AbstractVideoRepository(ABC):
+    """Every video added or returned is tracked: the unit of work hands its
+    events to the bus and saves it when it commits."""
+
     @abstractmethod
     def exists(self, *, source_key: str) -> bool:
         raise NotImplementedError
@@ -21,16 +24,11 @@ class AbstractVideoRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def next_pending(self) -> Video | None:
-        """The oldest PENDING video, or None."""
+    def next_pending(self) -> UUID | None:
+        """The id of the oldest PENDING video, or None."""
         raise NotImplementedError
 
     @abstractmethod
-    def downloading(self) -> list[Video]:
-        """Every DOWNLOADING video."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def save(self, video: Video) -> None:
-        """Writes the changes to a video loaded with get."""
+    def downloading(self) -> list[UUID]:
+        """The ids of every DOWNLOADING video."""
         raise NotImplementedError

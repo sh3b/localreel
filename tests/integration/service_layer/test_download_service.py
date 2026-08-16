@@ -75,7 +75,7 @@ class TestDownloadService:
             uow.videos.add(video)
         with container.uow():
             container.message_bus().handle(StartDownload(video_id=video.id))
-        monkeypatch.setattr(PostgresVideoRepository, "next_pending", lambda _: video)
+        monkeypatch.setattr(PostgresVideoRepository, "next_pending", lambda _: video.id)
         downloader = FakeDownloader()
 
         did_work = self._service(container, downloader).download_next()

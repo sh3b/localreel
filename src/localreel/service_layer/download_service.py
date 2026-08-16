@@ -27,39 +27,44 @@ class DownloadService:
         self._downloader = downloader
 
     def reset_interrupted_downloads(self) -> None:
-        with self._uow:
-            videos = self._uow.videos.downloading()
-        for video in videos:
+        with self._uow(commit=False):
+            video_ids = self._uow.videos.downloading()
+        for video_id in video_ids:
             with self._uow:
-                self._bus.handle(ResetDownload(video_id=video.id))
+                self._bus.handle(ResetDownload(video_id=video_id))
 
     def download_next(self) -> bool:
-        with self._uow:
-            video = self._uow.videos.next_pending()
-        if video is None:
-            return False
+        # Pick: read only.
+        with self._uow(commit=False):
+            video_id = self._uow.videos.next_pending()
+            if video_id is None:
+                return False
+            source_url = self._uow.videos.get(video_id, lock=False).source_url
 
+        # Claim: committed before the download, so a crash leaves a row to recover.
         try:
             with self._uow:
-                self._bus.handle(StartDownload(video_id=video.id))
+                self._bus.handle(StartDownload(video_id=video_id))
         except InvalidStatusTransition:
-            logger.info("video %s was already taken", video.id)
+            logger.info("video %s was already taken", video_id)
             return True
 
+        # Download: outside any transaction, it takes time.
         command: MarkReady | MarkFailed
         try:
-            result = self._downloader.download(url=video.source_url, video_id=video.id)
+            result = self._downloader.download(url=source_url, video_id=video_id)
         except Exception as exc:
-            logger.exception("download failed for video %s", video.id)
-            command = MarkFailed(video_id=video.id, reason=str(exc))
+            logger.exception("download failed for video %s", video_id)
+            command = MarkFailed(video_id=video_id, reason=str(exc))
         else:
             command = MarkReady(
-                video_id=video.id,
+                video_id=video_id,
                 file_path=result.file_path,
                 thumbnail_path=result.thumbnail_path,
                 metadata=result.metadata,
             )
 
+        # Record: READY or FAILED.
         with self._uow:
             self._bus.handle(command)
         return True

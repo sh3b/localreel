@@ -11,7 +11,7 @@ from localreel.domain.commands import (
     StartDownload,
     SubmitURL,
 )
-from localreel.domain.events import VideoCreated, VideoFailed, VideoUpdated
+from localreel.domain.events import VideoFailed
 from localreel.service_layer.download_service import DownloadService
 from localreel.service_layer.handlers.commands import (
     MarkFailedHandler,
@@ -20,11 +20,7 @@ from localreel.service_layer.handlers.commands import (
     StartDownloadHandler,
     SubmitURLHandler,
 )
-from localreel.service_layer.handlers.events import (
-    AddVideoHandler,
-    DiscardFilesHandler,
-    SaveVideoHandler,
-)
+from localreel.service_layer.handlers.events import DiscardFilesHandler
 from localreel.service_layer.message_bus import MessageBus
 from localreel.settings import Settings
 from localreel.views.videos import VideoView
@@ -45,6 +41,7 @@ class Container(containers.DeclarativeContainer):
 
     message_bus = providers.Factory(
         MessageBus,
+        uow=uow,
         command_handlers=providers.Dict(
             {
                 SubmitURL: providers.Factory(SubmitURLHandler, uow=uow),
@@ -56,12 +53,6 @@ class Container(containers.DeclarativeContainer):
         ),
         event_handlers=providers.Dict(
             {
-                VideoCreated: providers.List(
-                    providers.Factory(AddVideoHandler, uow=uow)
-                ),
-                VideoUpdated: providers.List(
-                    providers.Factory(SaveVideoHandler, uow=uow)
-                ),
                 VideoFailed: providers.List(
                     providers.Factory(DiscardFilesHandler, downloader=downloader)
                 ),

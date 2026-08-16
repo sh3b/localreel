@@ -15,6 +15,7 @@ from localreel.domain.value_objects import SourceMetadata, VideoStatus
 class PostgresVideoRepository(AbstractVideoRepository):
     def __init__(self, session: Session) -> None:
         self._session = session
+        self.seen: dict[UUID, Video] = {}
 
     def exists(self, *, source_key: str) -> bool:
         return bool(
@@ -37,27 +38,32 @@ class PostgresVideoRepository(AbstractVideoRepository):
                     f"A video with source key {video.source_key} exists"
                 ) from exc
             raise
+        self.seen[video.id] = video
 
     def get(self, video_id: UUID, *, lock: bool) -> Video:
         row = self._session.get(VideoORM, video_id, with_for_update=lock)
         if row is None:
             raise VideoNotFound(f"Video {video_id} not found")
-        return self._to_domain(row)
+        # A second get must hand back the same object: a fresh copy would
+        # replace the changed one, and the commit would save the stale state.
+        if video_id not in self.seen:
+            self.seen[video_id] = self._to_domain(row)
+        return self.seen[video_id]
 
-    def next_pending(self) -> Video | None:
-        row = self._session.scalars(
-            select(VideoORM)
+    def next_pending(self) -> UUID | None:
+        return self._session.scalars(
+            select(VideoORM.id)
             .where(VideoORM.status == VideoStatus.PENDING)
             .order_by(VideoORM.id)
             .limit(1)
         ).first()
-        return None if row is None else self._to_domain(row)
 
-    def downloading(self) -> list[Video]:
-        rows = self._session.scalars(
-            select(VideoORM).where(VideoORM.status == VideoStatus.DOWNLOADING)
+    def downloading(self) -> list[UUID]:
+        return list(
+            self._session.scalars(
+                select(VideoORM.id).where(VideoORM.status == VideoStatus.DOWNLOADING)
+            )
         )
-        return [self._to_domain(row) for row in rows]
 
     def save(self, video: Video) -> None:
         self._session.merge(self._to_orm(video))

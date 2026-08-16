@@ -132,6 +132,18 @@ class TestDownloadCommands:
         assert row.status is VideoStatus.FAILED
         assert row.error == "Video unavailable"
 
+    def test_handled_events_are_not_left_on_the_video(
+        self, container: Container
+    ) -> None:
+        video_id = self._downloading_video(container)
+
+        with container.uow() as uow:
+            container.message_bus().handle(
+                MarkFailed(video_id=video_id, reason="Video unavailable")
+            )
+
+            assert uow.videos.get(video_id, lock=True).events == []
+
     def test_unknown_video_raises(self, container: Container) -> None:
         with pytest.raises(VideoNotFound), container.uow():
             container.message_bus().handle(StartDownload(video_id=uuid7()))

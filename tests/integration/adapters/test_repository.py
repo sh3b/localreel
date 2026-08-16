@@ -64,9 +64,8 @@ class TestPostgresVideoRepository:
         self, session: Session, session_factory: sessionmaker[Session]
     ) -> None:
         repository = PostgresVideoRepository(session)
-        repository.add(VideoFactory.build())
-        video = repository.next_pending()
-        assert video is not None
+        video = VideoFactory.build()
+        repository.add(video)
         video.start_download()
         metadata = SourceMetadataFactory.build()
         video.mark_ready(file_path="a.webm", thumbnail_path="a.webp", metadata=metadata)
@@ -94,10 +93,7 @@ class TestPostgresVideoRepository:
         started.start_download()
         repository.save(started)
 
-        pending = repository.next_pending()
-
-        assert pending is not None
-        assert pending.id == older.id
+        assert repository.next_pending() == older.id
 
     def test_next_pending_is_none_without_pending_videos(
         self, session: Session
@@ -117,6 +113,4 @@ class TestPostgresVideoRepository:
             video.start_download()
             repository.save(video)
 
-        downloading = repository.downloading()
-
-        assert {video.id for video in downloading} == {first.id, second.id}
+        assert set(repository.downloading()) == {first.id, second.id}

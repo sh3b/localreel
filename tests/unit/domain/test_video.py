@@ -2,7 +2,7 @@ from uuid import uuid7
 
 import pytest
 
-from localreel.domain.events import VideoCreated, VideoFailed, VideoUpdated
+from localreel.domain.events import VideoFailed
 from localreel.domain.exceptions import InvalidStatusTransition, UnsupportedSource
 from localreel.domain.models.video import Video
 from localreel.domain.value_objects import VideoSource, VideoStatus
@@ -21,11 +21,6 @@ class TestCreate:
         assert video.source_key == "youtube:jNQXAC9IVRw"
         assert video.status is VideoStatus.PENDING
         assert video.attempts == 0
-
-    def test_registers_that_it_was_created(self) -> None:
-        video = Video.create(id=uuid7(), source_url="https://youtu.be/jNQXAC9IVRw")
-
-        assert video.events == [VideoCreated(video)]
 
     def test_rejects_an_unsupported_url(self) -> None:
         with pytest.raises(UnsupportedSource):
@@ -61,9 +56,9 @@ class TestDownloadTransitions:
 
         assert video.status is VideoStatus.FAILED
         assert video.error == "Video unavailable"
-        assert video.events[-2:] == [VideoUpdated(video), VideoFailed(video.id)]
+        assert video.events == [VideoFailed(video.id)]
 
-    def test_each_transition_registers_that_the_video_changed(self) -> None:
+    def test_a_download_that_succeeds_registers_no_event(self) -> None:
         video = VideoFactory.build()
 
         video.start_download()
@@ -73,11 +68,7 @@ class TestDownloadTransitions:
             metadata=SourceMetadataFactory.build(),
         )
 
-        assert video.events == [
-            VideoCreated(video),
-            VideoUpdated(video),
-            VideoUpdated(video),
-        ]
+        assert video.events == []
 
     def test_start_download_rejects_a_video_that_is_not_pending(self) -> None:
         video = VideoFactory.build()
@@ -98,7 +89,7 @@ class TestDownloadTransitions:
 
         assert video.status is VideoStatus.PENDING
         assert video.source_metadata is None
-        assert video.events == [VideoCreated(video)]
+        assert video.events == []
 
     def test_mark_failed_rejects_a_video_that_is_not_downloading(self) -> None:
         video = VideoFactory.build()
@@ -107,7 +98,7 @@ class TestDownloadTransitions:
             video.mark_failed("Video unavailable")
 
         assert video.status is VideoStatus.PENDING
-        assert video.events == [VideoCreated(video)]
+        assert video.events == []
 
 
 class TestResetDownload:
@@ -119,7 +110,7 @@ class TestResetDownload:
 
         assert video.status is VideoStatus.PENDING
         assert video.attempts == 1
-        assert VideoFailed(video.id) not in video.events
+        assert video.events == []
 
     def test_fails_the_video_once_its_attempts_are_used_up(self) -> None:
         video = VideoFactory.build()
@@ -132,7 +123,7 @@ class TestResetDownload:
 
         assert video.status is VideoStatus.FAILED
         assert video.error == "Download interrupted 3 times"
-        assert video.events[-2:] == [VideoUpdated(video), VideoFailed(video.id)]
+        assert video.events == [VideoFailed(video.id)]
 
     def test_rejects_a_video_that_is_not_downloading(self) -> None:
         video = VideoFactory.build()
@@ -141,4 +132,14 @@ class TestResetDownload:
             video.reset_download()
 
         assert video.status is VideoStatus.PENDING
-        assert video.events == [VideoCreated(video)]
+        assert video.events == []
+
+
+class TestCollectEvents:
+    def test_hands_over_the_events_once(self) -> None:
+        video = VideoFactory.build()
+        video.start_download()
+        video.mark_failed("Video unavailable")
+
+        assert video.collect_events() == [VideoFailed(video.id)]
+        assert video.collect_events() == []
