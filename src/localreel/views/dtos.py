@@ -1,9 +1,15 @@
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID
 
 from pydantic import BaseModel
 
 from localreel.domain.value_objects import VideoSource
+
+
+class VideoSort(StrEnum):
+    NEWEST = "newest"
+    OLDEST = "oldest"
 
 
 class VideoCard(BaseModel):
@@ -16,3 +22,8 @@ class VideoCard(BaseModel):
     saved_at: datetime
     playback_url: str
     thumbnail_url: str | None
+
+
+class VideoPage(BaseModel):
+    items: list[VideoCard]
+    next_cursor: UUID | None

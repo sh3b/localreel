@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from localreel.adapters.orm import VideoORM
 from localreel.adapters.repository import PostgresVideoRepository
+from localreel.domain.models.video import Video
 from localreel.domain.value_objects import VideoStatus
 from tests.factories import SourceMetadataFactory, VideoFactory
 
@@ -58,8 +59,54 @@ class TestListVideos:
     def test_returns_the_ready_videos_as_cards(
         self, client: TestClient, session: Session
     ) -> None:
+        video = self._ready(session, "https://youtu.be/jNQXAC9IVRw")
+
+        response = client.get("/videos")
+
+        assert response.status_code == 200
+        page = response.json()
+        assert page["next_cursor"] is None
+        [card] = page["items"]
+        assert card["id"] == str(video.id)
+        assert card["title"] == "Me at the zoo"
+        assert card["source"] == "YOUTUBE"
+        assert card["playback_url"] == f"/media/{video.id}.webm"
+
+    def test_returns_an_empty_page_without_ready_videos(
+        self, client: TestClient
+    ) -> None:
+        response = client.get("/videos")
+
+        assert response.status_code == 200
+        assert response.json() == {"items": [], "next_cursor": None}
+
+    @pytest.mark.parametrize("limit", [0, 101])
+    def test_rejects_a_limit_out_of_range(self, client: TestClient, limit: int) -> None:
+        response = client.get("/videos", params={"limit": limit})
+
+        assert response.status_code == 422
+
+    def test_pages_through_with_sort_cursor_and_limit(
+        self, client: TestClient, session: Session
+    ) -> None:
+        older = self._ready(session, "https://youtu.be/jNQXAC9IVRw")
+        newer = self._ready(session, "https://youtu.be/dQw4w9WgXcQ")
+
+        first = client.get("/videos", params={"sort": "oldest", "limit": 1}).json()
+        second = client.get(
+            "/videos",
+            params={"sort": "oldest", "limit": 1, "after": first["next_cursor"]},
+        ).json()
+
+        assert [card["id"] for card in first["items"]] == [str(older.id)]
+        assert first["next_cursor"] == str(older.id)
+        assert [card["id"] for card in second["items"]] == [str(newer.id)]
+        assert second["next_cursor"] is None
+
+    @staticmethod
+    def _ready(session: Session, source_url: str) -> Video:
         repository = PostgresVideoRepository(session)
-        video = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
+        video = VideoFactory.build(source_url=source_url)
         repository.add(video)
         video.start_download()
         video.mark_ready(
@@ -69,20 +116,4 @@ class TestListVideos:
         )
         repository.save(video)
         session.commit()
-
-        response = client.get("/videos")
-
-        assert response.status_code == 200
-        [card] = response.json()
-        assert card["id"] == str(video.id)
-        assert card["title"] == "Me at the zoo"
-        assert card["source"] == "YOUTUBE"
-        assert card["playback_url"] == f"/media/{video.id}.webm"
-
-    def test_returns_an_empty_list_without_ready_videos(
-        self, client: TestClient
-    ) -> None:
-        response = client.get("/videos")
-
-        assert response.status_code == 200
-        assert response.json() == []
+        return video

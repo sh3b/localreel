@@ -1,10 +1,12 @@
 from datetime import UTC, datetime
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from localreel.adapters.repository import PostgresVideoRepository
 from localreel.domain.models.video import Video
 from localreel.domain.value_objects import SourceMetadata, VideoSource
+from localreel.views.dtos import VideoCard, VideoSort
 from localreel.views.videos import VideoView
 from tests.factories import SourceMetadataFactory, VideoFactory
 
@@ -15,7 +17,7 @@ class TestListVideos:
     ) -> None:
         video = self._ready(session, "https://youtu.be/jNQXAC9IVRw")
 
-        [card] = video_view.list_videos()
+        [card] = self._cards(video_view)
 
         assert card.id == video.id
         assert card.title == "Me at the zoo"
@@ -38,7 +40,7 @@ class TestListVideos:
         repository.save(downloading)
         session.commit()
 
-        assert video_view.list_videos() == []
+        assert self._cards(video_view) == []
 
     def test_lists_the_newest_first(
         self, session: Session, video_view: VideoView
@@ -46,9 +48,64 @@ class TestListVideos:
         older = self._ready(session, "https://youtu.be/jNQXAC9IVRw")
         newer = self._ready(session, "https://youtu.be/dQw4w9WgXcQ")
 
-        cards = video_view.list_videos()
+        cards = self._cards(video_view)
 
         assert [card.id for card in cards] == [newer.id, older.id]
+
+    def test_lists_the_oldest_first_when_asked(
+        self, session: Session, video_view: VideoView
+    ) -> None:
+        older = self._ready(session, "https://youtu.be/jNQXAC9IVRw")
+        newer = self._ready(session, "https://youtu.be/dQw4w9WgXcQ")
+
+        cards = self._cards(video_view, sort=VideoSort.OLDEST)
+
+        assert [card.id for card in cards] == [older.id, newer.id]
+
+    def test_a_full_page_points_to_the_next_one(
+        self, session: Session, video_view: VideoView
+    ) -> None:
+        self._ready(session, "https://youtu.be/jNQXAC9IVRw")
+        middle = self._ready(session, "https://youtu.be/dQw4w9WgXcQ")
+        newest = self._ready(session, "https://youtu.be/9bZkp7q19f0")
+
+        page = video_view.list_videos(sort=VideoSort.NEWEST, after=None, limit=2)
+
+        assert [card.id for card in page.items] == [newest.id, middle.id]
+        assert page.next_cursor == middle.id
+
+    def test_the_last_page_has_no_cursor_even_when_full(
+        self, session: Session, video_view: VideoView
+    ) -> None:
+        self._ready(session, "https://youtu.be/jNQXAC9IVRw")
+        self._ready(session, "https://youtu.be/dQw4w9WgXcQ")
+
+        page = video_view.list_videos(sort=VideoSort.NEWEST, after=None, limit=2)
+
+        assert len(page.items) == 2
+        assert page.next_cursor is None
+
+    def test_continues_after_the_cursor_newest_first(
+        self, session: Session, video_view: VideoView
+    ) -> None:
+        oldest = self._ready(session, "https://youtu.be/jNQXAC9IVRw")
+        middle = self._ready(session, "https://youtu.be/dQw4w9WgXcQ")
+        self._ready(session, "https://youtu.be/9bZkp7q19f0")
+
+        cards = self._cards(video_view, after=middle.id)
+
+        assert [card.id for card in cards] == [oldest.id]
+
+    def test_continues_after_the_cursor_oldest_first(
+        self, session: Session, video_view: VideoView
+    ) -> None:
+        self._ready(session, "https://youtu.be/jNQXAC9IVRw")
+        middle = self._ready(session, "https://youtu.be/dQw4w9WgXcQ")
+        newest = self._ready(session, "https://youtu.be/9bZkp7q19f0")
+
+        cards = self._cards(video_view, sort=VideoSort.OLDEST, after=middle.id)
+
+        assert [card.id for card in cards] == [newest.id]
 
     def test_facebook_titles_come_from_the_description(
         self, session: Session, video_view: VideoView
@@ -61,7 +118,7 @@ class TestListVideos:
             ),
         )
 
-        [card] = video_view.list_videos()
+        [card] = self._cards(video_view)
 
         assert card.title == "A caption worth reading"
 
@@ -74,7 +131,7 @@ class TestListVideos:
             metadata=SourceMetadataFactory.build(title=None, description="Only this"),
         )
 
-        [card] = video_view.list_videos()
+        [card] = self._cards(video_view)
 
         assert card.title == "Only this"
 
@@ -83,9 +140,17 @@ class TestListVideos:
     ) -> None:
         self._ready(session, "https://youtu.be/jNQXAC9IVRw", thumbnail=False)
 
-        [card] = video_view.list_videos()
+        [card] = self._cards(video_view)
 
         assert card.thumbnail_url is None
+
+    @staticmethod
+    def _cards(
+        video_view: VideoView,
+        sort: VideoSort = VideoSort.NEWEST,
+        after: UUID | None = None,
+    ) -> list[VideoCard]:
+        return video_view.list_videos(sort=sort, after=after, limit=24).items
 
     @staticmethod
     def _ready(

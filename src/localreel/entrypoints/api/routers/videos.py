@@ -1,14 +1,15 @@
 from typing import Annotated
+from uuid import UUID
 
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from localreel.containers import Container
 from localreel.domain.commands import SubmitURL
 from localreel.domain.unit_of_work import AbstractUnitOfWork
 from localreel.entrypoints.api.schemas.videos import SubmitURLRequest
 from localreel.service_layer.message_bus import MessageBus
-from localreel.views.dtos import VideoCard
+from localreel.views.dtos import VideoPage, VideoSort
 from localreel.views.videos import VideoView
 
 router = APIRouter()
@@ -29,5 +30,8 @@ def submit_url(
 @inject
 def list_videos(
     view: Annotated[VideoView, Depends(Provide[Container.video_view])],
-) -> list[VideoCard]:
-    return view.list_videos()
+    sort: VideoSort = VideoSort.NEWEST,
+    after: UUID | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 24,
+) -> VideoPage:
+    return view.list_videos(sort=sort, after=after, limit=limit)

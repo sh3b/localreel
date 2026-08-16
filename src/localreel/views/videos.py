@@ -1,12 +1,13 @@
 from datetime import UTC, datetime
 from typing import ClassVar
+from uuid import UUID
 
 from sqlalchemy import ColumnElement, case, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from localreel.adapters.orm import VideoORM
 from localreel.domain.value_objects import VideoSource, VideoStatus
-from localreel.views.dtos import VideoCard
+from localreel.views.dtos import VideoCard, VideoPage, VideoSort
 
 
 class VideoView:
@@ -23,7 +24,9 @@ class VideoView:
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
-    def list_videos(self) -> list[VideoCard]:
+    def list_videos(
+        self, *, sort: VideoSort, after: UUID | None, limit: int
+    ) -> VideoPage:
         query = (
             select(
                 VideoORM.id,
@@ -36,10 +39,24 @@ class VideoView:
                 VideoORM.thumbnail_path,
             )
             .where(VideoORM.status == VideoStatus.READY)
-            .order_by(VideoORM.id.desc())
+            .limit(limit + 1)
         )
+        if sort is VideoSort.NEWEST:
+            query = query.order_by(VideoORM.id.desc())
+            if after is not None:
+                query = query.where(VideoORM.id < after)
+        else:
+            query = query.order_by(VideoORM.id.asc())
+            if after is not None:
+                query = query.where(VideoORM.id > after)
+
         with self._session_factory() as session:
             rows = session.execute(query).all()
+
+        next_cursor = None
+        if len(rows) > limit:
+            rows = rows[:limit]
+            next_cursor = rows[-1].id
 
         cards = []
         for row in rows:
@@ -59,4 +76,4 @@ class VideoView:
                     thumbnail_url=thumbnail_url,
                 )
             )
-        return cards
+        return VideoPage(items=cards, next_cursor=next_cursor)
