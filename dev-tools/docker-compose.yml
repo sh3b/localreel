@@ -1,0 +1,25 @@
+# Local development only
+# Usage: `make db` / `make db-logs` / `make db-reset`.
+name: localreel-dev
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:?set DB_USER in dev-tools/.env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in dev-tools/.env}
+      POSTGRES_DB: ${DB_NAME:?set DB_NAME in dev-tools/.env}
+    command: -c log_statement=${DB_LOG_STATEMENT:-none}
+    ports:
+      - "${DB_PORT:?set DB_PORT in dev-tools/.env}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pgdata:

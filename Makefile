@@ -1,6 +1,6 @@
 export PYTHONPATH := src
 
--include .env
+-include dev-tools/.env
 export
 
 .PHONY: install sync-locked test cov check lint format typecheck migration migrate db db-reset db-logs api download-worker transcode-worker
@@ -33,14 +33,14 @@ format:
 	uv run ruff check --fix src tests
 
 db:
-	docker compose up -d db
+	docker compose -f dev-tools/docker-compose.yml up -d
 
 db-logs:
-	docker compose logs -f db
+	docker compose -f dev-tools/docker-compose.yml logs -f db
 
 db-reset:
-	docker exec localreel-db dropdb -U $(DB_USER) --if-exists --force $(DB_NAME)
-	docker exec localreel-db createdb -U $(DB_USER) $(DB_NAME)
+	docker compose -f dev-tools/docker-compose.yml exec -T db dropdb -U $(DB_USER) --if-exists --force $(DB_NAME)
+	docker compose -f dev-tools/docker-compose.yml exec -T db createdb -U $(DB_USER) $(DB_NAME)
 	$(MAKE) migrate
 
 migration:  ## usage: make migration m="add videos table"
