@@ -1,5 +1,7 @@
 import logging
+import signal
 import time
+from types import FrameType
 
 from localreel.containers import Container
 
@@ -14,8 +16,13 @@ def run(container: Container) -> None:
             time.sleep(poll_interval)
 
 
+def _stop(signum: int, frame: FrameType | None) -> None:
+    raise SystemExit(128 + signum)
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
+    signal.signal(signal.SIGTERM, _stop)
     run(Container())
 
 

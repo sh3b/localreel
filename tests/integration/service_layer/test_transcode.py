@@ -1,5 +1,7 @@
 from uuid import UUID
 
+import pytest
+
 from localreel.containers import Container
 from localreel.domain.abstractions.transcoder import (
     AbstractTranscoder,
@@ -12,7 +14,10 @@ from tests.factories.video import VideoFactory
 
 class _FakeTranscoder(AbstractTranscoder):
     def __init__(
-        self, *, result: TranscodeResult | None = None, error: Exception | None = None
+        self,
+        *,
+        result: TranscodeResult | None = None,
+        error: BaseException | None = None,
     ):
         self._result = result
         self._error = error
@@ -77,6 +82,31 @@ class TestTranscodeNextDownloaded:
             loaded = uow.videos.get(video_id)
             assert loaded.status is VideoStatus.FAILED
             assert loaded.error_message == "boom"
+
+    @pytest.mark.parametrize("interruption", [SystemExit(143), KeyboardInterrupt()])
+    def test_interrupted_transcode_marks_failed_and_propagates(
+        self, container: Container, interruption: BaseException
+    ) -> None:
+        uow = container.uow()
+        with uow:
+            video = VideoFactory()
+            video.mark_downloading()
+            video.mark_downloaded("x.webm")
+            uow.videos.add(video)
+            video_id = video.id
+
+        with pytest.raises(type(interruption)):
+            transcode_next_downloaded(
+                uow,
+                container.message_bus(),
+                _FakeTranscoder(error=interruption),
+                "/downloads",
+            )
+
+        with uow:
+            loaded = uow.videos.get(video_id)
+            assert loaded.status is VideoStatus.FAILED
+            assert loaded.error_message == "worker shut down"
 
     def test_returns_false_when_nothing_downloaded(self, container: Container) -> None:
         uow = container.uow()

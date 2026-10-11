@@ -21,13 +21,24 @@ def transcode_next_downloaded(
     Returns False when there was nothing to claim, so the caller can back off.
     ffmpeg is slow and CPU-bound, so it runs between two short transactions,
     holding no row lock and no connection of its own.
+
+    If the process is told to stop mid-transcode (SIGTERM becomes `SystemExit`,
+    Ctrl-C is `KeyboardInterrupt`), the video is marked failed before the
+    interruption propagates, so it is not stranded in `TRANSCODING`.
     """
     claimed = _claim_next(uow)
     if claimed is None:
         return False
     video_id, original_path = claimed
     absolute_path = os.path.join(downloads_dir, original_path)
-    outcome: MarkReady | MarkFailed = _transcode(transcoder, video_id, absolute_path)
+    try:
+        outcome: MarkReady | MarkFailed = _transcode(
+            transcoder, video_id, absolute_path
+        )
+    except SystemExit, KeyboardInterrupt:
+        with uow:
+            message_bus.handle(MarkFailed(video_id=video_id, reason="worker shut down"))
+        raise
     with uow:
         message_bus.handle(outcome)
     return True

@@ -20,12 +20,21 @@ def download_next_pending(
     The slow download runs between two short transactions, holding no lock and
     no open transaction of its own — that is why it lives here and not inside a
     command handler.
+
+    If the process is told to stop mid-download (SIGTERM becomes `SystemExit`,
+    Ctrl-C is `KeyboardInterrupt`), the video is marked failed before the
+    interruption propagates, so it is not stranded in `DOWNLOADING`.
     """
     claimed = _claim_next(uow)
     if claimed is None:
         return False
     video_id, url = claimed
-    outcome: MarkDownloaded | MarkFailed = _download(downloader, video_id, url)
+    try:
+        outcome: MarkDownloaded | MarkFailed = _download(downloader, video_id, url)
+    except SystemExit, KeyboardInterrupt:
+        with uow:
+            message_bus.handle(MarkFailed(video_id=video_id, reason="worker shut down"))
+        raise
     with uow:
         message_bus.handle(outcome)
     return True

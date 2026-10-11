@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
+import pytest
+
 from localreel.containers import Container
 from localreel.domain.abstractions.downloader import AbstractDownloader, DownloadResult
 from localreel.domain.types import VideoStatus
@@ -23,7 +25,10 @@ _RESULT = DownloadResult(original_path="x.mp4", source_metadata=_METADATA)
 
 class _FakeDownloader(AbstractDownloader):
     def __init__(
-        self, *, result: DownloadResult | None = None, error: Exception | None = None
+        self,
+        *,
+        result: DownloadResult | None = None,
+        error: BaseException | None = None,
     ):
         self._result = result
         self._error = error
@@ -71,6 +76,26 @@ class TestDownloadNextPending:
             loaded = uow.videos.get(video_id)
             assert loaded.status is VideoStatus.FAILED
             assert loaded.error_message == "boom"
+
+    @pytest.mark.parametrize("interruption", [SystemExit(143), KeyboardInterrupt()])
+    def test_interrupted_download_marks_failed_and_propagates(
+        self, container: Container, interruption: BaseException
+    ) -> None:
+        uow = container.uow()
+        with uow:
+            video = VideoFactory()
+            uow.videos.add(video)
+            video_id = video.id
+
+        with pytest.raises(type(interruption)):
+            download_next_pending(
+                uow, container.message_bus(), _FakeDownloader(error=interruption)
+            )
+
+        with uow:
+            loaded = uow.videos.get(video_id)
+            assert loaded.status is VideoStatus.FAILED
+            assert loaded.error_message == "worker shut down"
 
     def test_returns_false_when_nothing_pending(self, container: Container) -> None:
         uow = container.uow()
