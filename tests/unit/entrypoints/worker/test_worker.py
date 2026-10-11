@@ -1,5 +1,8 @@
 import logging
+import signal
 import time
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 
@@ -82,3 +85,17 @@ class TestMain:
         worker_main.main()
 
         assert len(started) == 1
+
+    def test_sigterm_exits_with_143(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        handlers: dict[int, Callable[..., Any]] = {}
+        monkeypatch.setattr(
+            signal, "signal", lambda signum, handler: handlers.update({signum: handler})
+        )
+        monkeypatch.setattr(Worker, "run", lambda self: None)
+        monkeypatch.setattr(logging, "basicConfig", lambda **_: None)
+
+        worker_main.main()
+
+        with pytest.raises(SystemExit) as exit_info:
+            handlers[signal.SIGTERM](signal.SIGTERM, None)
+        assert exit_info.value.code == 143
