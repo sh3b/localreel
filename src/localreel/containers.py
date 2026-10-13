@@ -28,7 +28,12 @@ from localreel.views.videos import VideoView
 
 class Container(containers.DeclarativeContainer):
     settings = providers.Singleton(Settings)
-    engine = providers.Singleton(create_engine, settings.provided.db_url)
+    engine = providers.Singleton(
+        create_engine,
+        settings.provided.db_url,
+        pool_pre_ping=True,
+        connect_args={"connect_timeout": 3, "tcp_user_timeout": 5000},
+    )
     session_factory: providers.Singleton[sessionmaker[Session]] = providers.Singleton(
         sessionmaker, bind=engine, autoflush=True
     )
