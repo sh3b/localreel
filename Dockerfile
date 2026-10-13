@@ -11,8 +11,9 @@ COPY --from=denoland/deno:bin-2.9.7 /deno /usr/local/bin/deno
 WORKDIR /app
 
 # ffmpeg: yt-dlp needs it to merge/remux downloaded streams.
+# curl: the api healthcheck in docker-compose.yml.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg \
+    && apt-get install -y --no-install-recommends ffmpeg curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Runs as whatever uid compose's `user:` sets, which has no passwd entry, so

@@ -6,7 +6,7 @@ from localreel.entrypoints.api.routers import health, videos
 
 def create_app(container: Container | None = None) -> FastAPI:
     container = container or Container()
-    container.wire(modules=[videos])
+    container.wire(modules=[health, videos])
 
     app = FastAPI(title="localreel")
     app.state.container = container
