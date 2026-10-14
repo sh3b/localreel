@@ -4,6 +4,7 @@ from uuid import uuid7
 
 import pytest
 from yt_dlp import YoutubeDL
+from yt_dlp.options import create_parser
 from yt_dlp.utils import DownloadError
 
 from localreel.adapters.downloader import YtDlpDownloader
@@ -28,6 +29,13 @@ class TestYtDlpDownloader:
 
         assert "generic" not in loaded
         assert {"youtube", "tiktok", "tiktokvm", "facebook"} <= loaded
+
+    def test_retries_like_the_yt_dlp_command(self) -> None:
+        options = YtDlpDownloader(Path("/downloads"))._options(uuid7())
+        command_defaults = create_parser().defaults
+
+        assert options["retries"] == command_defaults["retries"]
+        assert options["fragment_retries"] == command_defaults["fragment_retries"]
 
     def test_refuses_a_url_no_allowed_extractor_handles(self, tmp_path: Path) -> None:
         with pytest.raises(DownloadError, match="No suitable extractor"):

@@ -44,6 +44,9 @@ class YtDlpDownloader(AbstractDownloader):
                 r"vm\.tiktok",
                 "facebook.*",
             ],
+            # The yt-dlp command's defaults; as a library it retries nothing.
+            "retries": 10,
+            "fragment_retries": 10,
             "quiet": True,
             "noprogress": True,
         }
