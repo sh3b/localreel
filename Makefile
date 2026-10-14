@@ -33,7 +33,7 @@ format:
 	uv run ruff check --fix src tests
 
 db:
-	docker compose -f dev-tools/docker-compose.yml up -d
+	docker compose -f dev-tools/docker-compose.yml up -d --wait
 
 db-logs:
 	docker compose -f dev-tools/docker-compose.yml logs -f db
