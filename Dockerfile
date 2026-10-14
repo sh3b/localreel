@@ -29,6 +29,9 @@ COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
+# Keep after `uv sync`: set earlier, uv creates this dir as root and yt-dlp can't write it.
+ENV XDG_CACHE_HOME=/tmp/cache
+
 COPY src ./src
 
 EXPOSE 8000
