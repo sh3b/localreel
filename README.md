@@ -1,0 +1,119 @@
+# localreel
+
+A self-hosted library for short videos. Give it a link, and it downloads the
+video, converts it to something every browser can play, and keeps it on your own
+disk. No account, no cloud, no tracking.
+
+> **Status: early.** There is no web UI yet, only an HTTP API, and YouTube is the
+> only supported source. Expect rough edges.
+
+## What it does
+
+1. You submit a URL (`POST /videos`).
+2. A **download worker** fetches the best quality available, using
+   [yt-dlp](https://github.com/yt-dlp/yt-dlp), and archives the original file,
+   thumbnail and metadata.
+3. A **transcode worker** turns it into a progressive H.264/AAC MP4 (copying the
+   streams instead of re-encoding when they are already browser-safe).
+4. nginx serves the finished files straight from disk, with range requests, so
+   seeking works.
+
+Originals are kept at full quality. The playable copy is a separate file, so
+storage use is roughly three times the size of the original.
+
+## Quick start
+
+You need Docker with Compose v2.
+
+```bash
+git clone https://github.com/sh3b/localreel.git
+cd localreel
+
+cp .env.example .env              # then change DB_PASSWORD
+mkdir -p library/media library/downloads
+
+docker compose up -d --build
+```
+
+The app containers run as uid/gid `1000:1000` by default, so the two `library/`
+directories must be writable by that user. If yours is different, set `PUID` and
+`PGID` in `.env` (find them with `id -u` and `id -g`) and `chown` the
+directories to match.
+
+Submit a video:
+
+```bash
+curl -X POST http://localhost:8080/videos \
+  -H 'Content-Type: application/json' \
+  -d '{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "user_id": "00000000-0000-0000-0000-000000000000"}'
+```
+
+It answers `202` straight away; the workers do the rest in the background. Then
+list what is ready:
+
+```bash
+curl http://localhost:8080/videos/explore
+```
+
+Each entry has a `playback_path` and `thumbnail_path`. Prefix them with `/media/`
+to fetch the files, for example `http://localhost:8080/media/<id>/<id>.mp4`.
+
+## Configuration
+
+Everything lives in `.env` (see `.env.example`). The ones you are most likely to
+touch:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MEDIA_PATH` | required | Host directory for the playable files |
+| `DOWNLOADS_PATH` | required | Host directory for the original downloads |
+| `DB_PASSWORD` | required | Postgres password; use only `A-Za-z0-9` |
+| `HTTP_PORT` | `8080` | The one published port |
+| `PUID` / `PGID` | `1000` | uid/gid the app containers run as |
+| `PGDATA_PATH` | named volume | Put Postgres data in a host directory instead |
+
+`docker compose up` refuses to start if a required value is missing.
+
+## Good to know
+
+- **Plain HTTP, no login.** The stack serves unencrypted HTTP on one port and has
+  no authentication. Do not expose it to the internet as is. Put a reverse proxy
+  that handles TLS and access control in front of it.
+- **YouTube may block servers.** YouTube sometimes answers datacenter and VPN
+  addresses with "Sign in to confirm you're not a bot". Cookie support is planned.
+- **A failed video stays failed.** If a download or transcode fails, the video is
+  marked `FAILED`. There is no retry endpoint yet.
+- **Stopping is safe.** `docker compose stop` interrupts a running job, marks that
+  video `FAILED` and exits cleanly. A hard kill (out of memory, power loss) can
+  leave a video stuck in `DOWNLOADING` or `TRANSCODING`.
+
+## Layout
+
+| Service | Role |
+|---|---|
+| `db` | Postgres 18 |
+| `migrate` | One-shot `alembic upgrade head`, then exits |
+| `api` | FastAPI: `POST /videos`, `GET /videos/explore`, `GET /health` |
+| `download-worker` | Claims pending videos and downloads them |
+| `transcode-worker` | Claims downloaded videos and makes the playable MP4 |
+| `nginx` | Serves `/media/` from disk, proxies everything else to the api |
+
+## Development
+
+Python 3.14, [uv](https://docs.astral.sh/uv/), and a local Postgres from
+`make db`.
+
+```bash
+cp dev-tools/.env.example dev-tools/.env
+make install
+make db && make migrate
+make test
+```
+
+`make lint`, `make typecheck`, `make api`, `make download-worker` and
+`make transcode-worker` do what they say. Full YouTube extraction needs `ffmpeg`
+and `deno` installed locally.
+
+## License
+
+Not chosen yet.
