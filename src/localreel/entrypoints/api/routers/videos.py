@@ -1,5 +1,7 @@
+from uuid import UUID
+
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from localreel.containers import Container
 from localreel.domain.abstractions.unit_of_work import AbstractUnitOfWork
@@ -7,7 +9,7 @@ from localreel.domain.commands import SubmitURL
 from localreel.domain.exceptions import UnsupportedSource
 from localreel.entrypoints.api.schemas.videos import SubmitURLRequest
 from localreel.service_layer.message_bus import MessageBus
-from localreel.service_layer.views.dtos import VideoCard
+from localreel.service_layer.views.dtos import VideoPage, VideoSort
 from localreel.service_layer.views.videos import VideoView
 
 router = APIRouter()
@@ -30,9 +32,12 @@ def submit_url(
             ) from exc
 
 
-@router.get("/videos/explore")
+@router.get("/videos")
 @inject
-def explore(
+def list_videos(
+    sort: VideoSort = VideoSort.NEWEST,
+    after: UUID | None = None,
+    limit: int = Query(default=24, ge=1, le=100),
     video_view: VideoView = Depends(Provide[Container.video_view]),
-) -> list[VideoCard]:
-    return video_view.all_videos()
+) -> VideoPage:
+    return video_view.list_videos(sort=sort, after=after, limit=limit)
