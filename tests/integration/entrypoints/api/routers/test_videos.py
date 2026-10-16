@@ -1,9 +1,11 @@
 import hashlib
-from uuid import uuid7
+from uuid import UUID, uuid7
 
+import pytest
 from fastapi.testclient import TestClient
 
 from localreel.containers import Container
+from localreel.domain.models.video import Video
 from localreel.domain.types import VideoSource, VideoVisibility
 from tests.factories.video import VideoFactory
 
@@ -46,37 +48,98 @@ class TestSubmitURL:
         }
 
 
-class TestExplore:
-    def test_returns_ready_videos(
+def _ready_video(tags: list[str] | None = None) -> Video:
+    video = VideoFactory(source=VideoSource.YOUTUBE)
+    video.update_tags(tags or [])
+    video.mark_downloading()
+    video.mark_downloaded("v.webm")
+    video.mark_transcoding()
+    video.mark_ready("vid/vid.mp4", "vid/vid-thumbnail.jpg", 50, 1080, 1920)
+    return video
+
+
+class TestListVideos:
+    def test_returns_a_ready_video_as_a_card(
         self, client: TestClient, container: Container
     ) -> None:
         uow = container.uow()
         with uow:
-            video = VideoFactory(source=VideoSource.YOUTUBE)
-            video.mark_downloading()
-            video.mark_downloaded("v.webm")
-            video.mark_transcoding()
-            video.mark_ready("vid/vid.mp4", "vid/vid-thumbnail.jpg", 50, 720, 1280)
+            video = _ready_video(tags=["music"])
             uow.videos.add(video)
             video_id = video.id
 
-        response = client.get("/videos/explore")
+        response = client.get("/videos")
 
         assert response.status_code == 200
-        data = response.json()
-        assert len(data) == 1
-        assert data[0]["id"] == str(video_id)
-        assert data[0]["playback_path"] == "vid/vid.mp4"
-        assert data[0]["thumbnail_path"] == "vid/vid-thumbnail.jpg"
+        card = response.json()["items"][0]
+        assert card["id"] == str(video_id)
+        assert card["playback_url"] == "/media/vid/vid.mp4"
+        assert card["thumbnail_url"] == "/media/vid/vid-thumbnail.jpg"
+        assert card["tags"] == ["music"]
+        assert (card["width"], card["height"]) == (1080, 1920)
+        assert card["saved_at"] is not None
 
-    def test_excludes_non_ready_videos(
+    def test_excludes_videos_that_are_not_ready(
         self, client: TestClient, container: Container
     ) -> None:
         uow = container.uow()
         with uow:
-            uow.videos.add(VideoFactory())
+            pending = VideoFactory()
+            uow.videos.add(pending)
+            pending_id = pending.id
 
-        response = client.get("/videos/explore")
+        response = client.get("/videos", params={"limit": 100})
 
         assert response.status_code == 200
-        assert response.json() == []
+        ids = [card["id"] for card in response.json()["items"]]
+        assert str(pending_id) not in ids
+
+    def test_newest_first_pages_continue_from_the_cursor(
+        self, client: TestClient, container: Container
+    ) -> None:
+        uow = container.uow()
+        with uow:
+            videos = [_ready_video() for _ in range(3)]
+            for video in videos:
+                uow.videos.add(video)
+            first, second, third = (str(v.id) for v in videos)
+
+        page_one = client.get("/videos", params={"limit": 2}).json()
+        page_two = client.get(
+            "/videos", params={"limit": 2, "after": page_one["next_cursor"]}
+        ).json()
+
+        assert [card["id"] for card in page_one["items"]] == [third, second]
+        assert page_one["next_cursor"] == second
+        assert page_two["items"][0]["id"] == first
+
+    def test_oldest_first_ends_with_no_cursor(
+        self, client: TestClient, container: Container
+    ) -> None:
+        uow = container.uow()
+        with uow:
+            videos = [_ready_video() for _ in range(3)]
+            for video in videos:
+                uow.videos.add(video)
+            ids = [str(v.id) for v in videos]
+            just_before_first = UUID(int=videos[0].id.int - 1)
+
+        response = client.get(
+            "/videos",
+            params={"sort": "oldest", "after": str(just_before_first), "limit": 3},
+        )
+
+        assert response.status_code == 200
+        assert [card["id"] for card in response.json()["items"]] == ids
+        assert response.json()["next_cursor"] is None
+
+    @pytest.mark.parametrize("limit", [0, 101])
+    def test_rejects_a_limit_out_of_range(self, client: TestClient, limit: int) -> None:
+        response = client.get("/videos", params={"limit": limit})
+
+        assert response.status_code == 422
+
+    def test_rejects_an_unknown_sort(self, client: TestClient) -> None:
+        response = client.get("/videos", params={"sort": "popular"})
+
+        assert response.status_code == 422
