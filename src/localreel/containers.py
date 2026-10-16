@@ -24,8 +24,8 @@ from localreel.service_layer.handlers.commands import (
 )
 from localreel.service_layer.message_bus import MessageBus
 from localreel.service_layer.transcode import transcode_next_downloaded
-from localreel.service_layer.views.videos import VideoView
 from localreel.settings import Settings
+from localreel.views.videos import VideoView
 
 
 class Container(containers.DeclarativeContainer):
