@@ -198,7 +198,9 @@
 					]}
 					style:--ratio="{video.width ?? 9} / {video.height ?? 16}"
 				>
-					<FeedVideo {video} bind:muted bind:paused onended={next} />
+					{#key video.id}
+						<FeedVideo {video} bind:muted bind:paused onended={next} />
+					{/key}
 
 					<!-- On phones, and in fullscreen, the details sit over the picture. -->
 					<div

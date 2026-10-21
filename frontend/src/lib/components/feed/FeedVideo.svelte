@@ -8,6 +8,9 @@
 		onended?: () => void;
 	};
 
+	// The Feed recreates this component for every video (keyed on its id), so
+	// the position and length start fresh; kept across videos, bind:currentTime
+	// would start the next one where the last one ended.
 	let { video, muted = $bindable(), paused = $bindable(), onended }: Props = $props();
 
 	let element = $state<HTMLVideoElement>();
@@ -33,22 +36,20 @@
 </script>
 
 <div class="relative h-full w-full bg-media">
-	{#key video.id}
-		<video
-			bind:this={element}
-			bind:paused
-			bind:currentTime
-			bind:duration
-			{muted}
-			src={video.playback_url}
-			poster={video.thumbnail_url ?? undefined}
-			playsinline
-			preload="auto"
-			{onended}
-			onclick={() => (paused = !paused)}
-			class="h-full w-full cursor-pointer object-contain"
-		></video>
-	{/key}
+	<video
+		bind:this={element}
+		bind:paused
+		bind:currentTime
+		bind:duration
+		{muted}
+		src={video.playback_url}
+		poster={video.thumbnail_url ?? undefined}
+		playsinline
+		preload="auto"
+		{onended}
+		onclick={() => (paused = !paused)}
+		class="h-full w-full cursor-pointer object-contain"
+	></video>
 
 	<div class="absolute inset-x-0 bottom-0 h-[3px] bg-white/20">
 		<div class="h-full bg-accent" style:width="{progress}%"></div>
