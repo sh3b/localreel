@@ -37,5 +37,7 @@ COPY src ./src
 EXPOSE 8000
 
 # Default command; compose services (api, future worker) override it.
+# --root-path: nginx serves the API under /api, so the docs at /api/docs load
+# their schema from the right place. Routes themselves stay at /videos etc.
 CMD ["uvicorn", "localreel.entrypoints.api.main:create_app", \
-     "--factory", "--host", "0.0.0.0", "--port", "8000"]
+     "--factory", "--host", "0.0.0.0", "--port", "8000", "--root-path", "/api"]

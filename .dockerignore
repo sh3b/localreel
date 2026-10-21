@@ -11,3 +11,6 @@ dev-tools
 .idea
 .env
 library
+frontend/node_modules
+frontend/.svelte-kit
+frontend/build

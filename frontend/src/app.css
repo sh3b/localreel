@@ -1,0 +1,58 @@
+@import 'tailwindcss';
+@import './lib/theme/tokens.css';
+
+/* Tailwind utilities that read the theme tokens, so a theme switch restyles everything. */
+@theme inline {
+	--color-bg: var(--lr-bg);
+	--color-surface: var(--lr-surface);
+	--color-raised: var(--lr-raised);
+	--color-media: var(--lr-media);
+	--color-line: var(--lr-line);
+	--color-line-strong: var(--lr-line-strong);
+	--color-fg: var(--lr-fg);
+	--color-fg-strong: var(--lr-fg-strong);
+	--color-muted: var(--lr-muted);
+	--color-faint: var(--lr-faint);
+	--color-accent: var(--lr-accent);
+	--color-on-accent: var(--lr-on-accent);
+	--color-ok: var(--lr-ok);
+	--color-warn: var(--lr-warn);
+	--color-danger: var(--lr-danger);
+
+	--font-ui: var(--lr-font-ui);
+	--font-title: var(--lr-font-title);
+
+	--radius-box: var(--lr-radius);
+	--spacing-tile: var(--lr-tile-gap);
+	--spacing-bar: var(--lr-bar-height);
+}
+
+@layer base {
+	html,
+	body {
+		height: 100%;
+	}
+
+	body {
+		margin: 0;
+		background: var(--lr-bg);
+		color: var(--lr-fg);
+		font-family: var(--lr-font-ui);
+		font-size: 13px;
+		-webkit-font-smoothing: antialiased;
+	}
+
+	:focus-visible {
+		outline: 2px solid var(--lr-accent);
+		outline-offset: 2px;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			animation-duration: 0.01ms !important;
+			transition-duration: 0.01ms !important;
+		}
+	}
+}

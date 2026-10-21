@@ -81,19 +81,21 @@ services:
       - ${MEDIA_PATH:?set MEDIA_PATH in .env}:/app/data/media
 
   nginx:
-    image: nginx:1.31.6-alpine
+    # nginx with the built web UI and nginx.conf baked in.
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
     restart: unless-stopped
     ports:
       - "${HTTP_PORT:-8080}:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ${MEDIA_PATH:?set MEDIA_PATH in .env}:/app/data/media:ro
     depends_on:
       api:
         condition: service_healthy
     healthcheck:
       # Through the proxy, so it covers nginx and the api behind it.
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/api/health"]
       interval: 10s
       timeout: 5s
       retries: 3

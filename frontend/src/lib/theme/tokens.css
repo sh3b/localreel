@@ -1,0 +1,70 @@
+/*
+ * Design tokens: the only place colours, fonts and sizes are defined.
+ *
+ * Components never use raw values; they use the Tailwind utilities mapped onto
+ * these variables in app.css (bg-surface, text-muted, border-line, ...).
+ *
+ * To add a theme: copy a [data-theme] block, give it a new name, change the
+ * values, and register the name in themes.ts. Nothing else needs to change.
+ */
+
+:root,
+[data-theme='tool'] {
+	color-scheme: dark;
+
+	/* Surfaces, from the page back to the floating menu */
+	--lr-bg: #0b0c0e;
+	--lr-surface: #0f1216;
+	--lr-raised: #151920;
+	--lr-media: #000000;
+
+	/* Lines and text */
+	--lr-line: #23272e;
+	--lr-line-strong: #343a44;
+	--lr-fg: #d6dce4;
+	--lr-fg-strong: #f1f4f8;
+	--lr-muted: #8c97a6;
+	--lr-faint: #6b7686;
+
+	/* One accent, used for focus, the active place and the primary action */
+	--lr-accent: #ff8a3d;
+	--lr-on-accent: #0b0c0e;
+
+	/* Status */
+	--lr-ok: #7bd88f;
+	--lr-warn: #e0b44c;
+	--lr-danger: #e57373;
+
+	/* Type */
+	--lr-font-ui: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+	--lr-font-title: system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+	/* Shape and rhythm */
+	--lr-radius: 0px;
+	--lr-tile-gap: 14px;
+	--lr-bar-height: 40px;
+}
+
+[data-theme='tool-light'] {
+	color-scheme: light;
+
+	--lr-bg: #f3f4f6;
+	--lr-surface: #ffffff;
+	--lr-raised: #ffffff;
+	--lr-media: #111317;
+
+	--lr-line: #d9dde3;
+	--lr-line-strong: #b9c0ca;
+	--lr-fg: #2a3038;
+	--lr-fg-strong: #0b0d10;
+	--lr-muted: #56606d;
+	--lr-faint: #6b7480;
+
+	/* Darker orange so text in it keeps 4.5:1 on white */
+	--lr-accent: #b5500f;
+	--lr-on-accent: #ffffff;
+
+	--lr-ok: #1f7a3d;
+	--lr-warn: #8a6100;
+	--lr-danger: #b42318;
+}

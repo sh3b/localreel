@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en" data-theme="tool">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="color-scheme" content="dark light" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
+		<title>localreel</title>
+		<script>
+			// Apply the saved theme before first paint. Key and names: src/lib/theme/themes.ts.
+			try {
+				var saved = localStorage.getItem('localreel.theme');
+				if (saved === 'tool' || saved === 'tool-light') {
+					document.documentElement.dataset.theme = saved;
+				}
+			} catch (e) {}
+		</script>
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>
