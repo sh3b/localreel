@@ -1,18 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import {
-		THEMES,
-		applyTheme,
-		nextTheme,
-		readSavedTheme,
-		type ThemeId
-	} from '#lib/theme/themes.ts';
+	import { THEMES, applyTheme, nextTheme, resolveTheme, type ThemeId } from '#lib/theme/themes.ts';
 
 	let theme = $state<ThemeId>(THEMES[0].id);
 	const label = $derived(THEMES.find((t) => t.id === theme)?.label ?? theme);
 
+	// static/theme.js has already applied the saved theme; show that one.
 	onMount(() => {
-		theme = readSavedTheme();
+		theme = resolveTheme(document.documentElement.dataset.theme ?? null);
 	});
 
 	function toggle() {

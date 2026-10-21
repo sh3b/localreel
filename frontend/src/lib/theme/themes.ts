@@ -6,8 +6,8 @@ export const THEMES = [
 
 export type ThemeId = (typeof THEMES)[number]['id'];
 
-// Also read by the inline script in app.html, which applies the saved theme
-// before the first paint so the page never flashes the wrong colours.
+// Also read by static/theme.js, which applies the saved theme before the first
+// paint so the page never flashes the wrong colours.
 export const THEME_STORAGE_KEY = 'localreel.theme';
 
 export function isThemeId(value: unknown): value is ThemeId {
@@ -21,14 +21,6 @@ export function resolveTheme(saved: string | null): ThemeId {
 export function nextTheme(current: ThemeId): ThemeId {
 	const index = THEMES.findIndex((theme) => theme.id === current);
 	return THEMES[(index + 1) % THEMES.length].id;
-}
-
-export function readSavedTheme(): ThemeId {
-	try {
-		return resolveTheme(localStorage.getItem(THEME_STORAGE_KEY));
-	} catch {
-		return THEMES[0].id;
-	}
 }
 
 export function applyTheme(theme: ThemeId): void {

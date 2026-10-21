@@ -6,15 +6,7 @@
 		<meta name="color-scheme" content="dark light" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
 		<title>localreel</title>
-		<script>
-			// Apply the saved theme before first paint. Key and names: src/lib/theme/themes.ts.
-			try {
-				var saved = localStorage.getItem('localreel.theme');
-				if (saved === 'tool' || saved === 'tool-light') {
-					document.documentElement.dataset.theme = saved;
-				}
-			} catch (e) {}
-		</script>
+		<script src="%sveltekit.assets%/theme.js"></script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

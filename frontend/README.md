@@ -40,9 +40,9 @@ read CSS variables from `tokens.css`.
 
 - **Tweak the current theme:** edit its block in `tokens.css`.
 - **Add a theme:** copy a `[data-theme]` block in `tokens.css`, rename it, change
-  the values, then add it to `THEMES` in `themes.ts` and to the list in the
-  inline script in `src/app.html` (which applies the saved theme before the
-  first paint). The theme button in the top bar cycles through `THEMES`.
+  the values, then add it to `THEMES` in `themes.ts`. The theme button in the
+  top bar cycles through `THEMES`; `static/theme.js` applies the saved one
+  before the first paint and needs no change.
 - **Add a token:** define `--lr-name` in every theme block, then map it in the
   `@theme inline` block in `app.css` (`--color-name: var(--lr-name);`).
 
