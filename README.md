@@ -4,12 +4,12 @@ A self-hosted library for short videos. Give it a link, and it downloads the
 video, converts it to something every browser can play, and keeps it on your own
 disk. No account, no cloud, no tracking.
 
-> **Status: early.** There is no web UI yet, only an HTTP API, and YouTube is the
-> only supported source. Expect rough edges.
+> **Status: early.** The web UI is still being built, so for now videos are added
+> through the HTTP API, and YouTube is the only tested source. Expect rough edges.
 
 ## What it does
 
-1. You submit a URL (`POST /videos`).
+1. You submit a URL (`POST /api/videos`).
 2. A **download worker** fetches the best quality available, using
    [yt-dlp](https://github.com/yt-dlp/yt-dlp), and archives the original file,
    thumbnail and metadata.
@@ -43,7 +43,7 @@ directories to match.
 Submit a video:
 
 ```bash
-curl -X POST http://localhost:8080/videos \
+curl -X POST http://localhost:8080/api/videos \
   -H 'Content-Type: application/json' \
   -d '{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "user_id": "00000000-0000-0000-0000-000000000000"}'
 ```
@@ -52,11 +52,13 @@ It answers `202` straight away; the workers do the rest in the background. Then
 list what is ready:
 
 ```bash
-curl http://localhost:8080/videos/explore
+curl http://localhost:8080/api/videos
 ```
 
-Each entry has a `playback_path` and `thumbnail_path`. Prefix them with `/media/`
-to fetch the files, for example `http://localhost:8080/media/<id>/<id>.mp4`.
+Each entry has a ready-to-use `playback_url` and `thumbnail_url`, for example
+`/media/<id>/<id>.mp4`. Results come newest first, 24 at a time; pass
+`after=<next_cursor>` for the next page and `sort=oldest` to reverse the order.
+The full API, with a page to try it, is at `http://localhost:8080/api/docs`.
 
 ## Configuration
 
@@ -93,10 +95,10 @@ touch:
 |---|---|
 | `db` | Postgres 18 |
 | `migrate` | One-shot `alembic upgrade head`, then exits |
-| `api` | FastAPI: `POST /videos`, `GET /videos/explore`, `GET /health` |
+| `api` | FastAPI, reached at `/api/` through nginx: `POST /videos`, `GET /videos`, `GET /health` |
 | `download-worker` | Claims pending videos and downloads them |
 | `transcode-worker` | Claims downloaded videos and makes the playable MP4 |
-| `nginx` | Serves `/media/` from disk, proxies everything else to the api |
+| `nginx` | Serves the web UI at `/`, the api at `/api/` and the media files at `/media/` |
 
 ## Development
 
@@ -113,6 +115,10 @@ make test
 `make lint`, `make typecheck`, `make api`, `make download-worker` and
 `make transcode-worker` do what they say. Full YouTube extraction needs `ffmpeg`
 and `deno` installed locally.
+
+The web UI lives in `frontend/` and needs Node (version in `frontend/.nvmrc`).
+With the compose stack running, `make fe-install` once, then `make fe-dev` serves
+it at `http://localhost:5173` with live reload. See `frontend/README.md`.
 
 ## License
 
