@@ -47,6 +47,17 @@ class TestSubmitURL:
             "detail": "Unsupported video source: https://vimeo.com/12345"
         }
 
+    def test_internal_address_disguised_as_youtube_is_rejected_and_not_stored(
+        self, client: TestClient, container: Container
+    ) -> None:
+        url = "http://169.254.169.254/latest/meta-data/?youtube.com"
+
+        response = client.post("/videos", json={"url": url, "user_id": str(uuid7())})
+
+        assert response.status_code == 422
+        url_hash = hashlib.sha256(url.encode()).hexdigest()
+        assert container.uow().videos.get_by_source_url_hash(url_hash) is None
+
 
 def _ready_video(tags: list[str] | None = None) -> Video:
     video = VideoFactory(source=VideoSource.YOUTUBE)

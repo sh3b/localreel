@@ -2,6 +2,8 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from yt_dlp import YoutubeDL
+
 from localreel.adapters.downloader import YtDlpDownloader
 from localreel.domain.value_objects.source_metadata import SourceMetadata
 
@@ -85,6 +87,14 @@ class TestYtDlpDownloaderOptions:
             options["outtmpl"]["thumbnail"]
             == f"/downloads/{VIDEO_ID}-thumbnail.%(ext)s"
         )
+
+    def test_loads_only_supported_site_extractors(self) -> None:
+        allowed = self._options()["allowed_extractors"]
+        with YoutubeDL({"allowed_extractors": allowed, "quiet": True}) as ydl:
+            loaded = {key.lower() for key in ydl._ies}
+
+        assert "generic" not in loaded
+        assert {"youtube", "youtubetab", "tiktok", "tiktokvm", "facebookreel"} <= loaded
 
     def test_converts_the_thumbnail_to_jpg(self) -> None:
         assert self._options()["postprocessors"] == [

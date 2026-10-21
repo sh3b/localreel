@@ -75,6 +75,14 @@ class YtDlpDownloader(AbstractDownloader):
                     "when": "before_dl",
                 }
             ],
+            # No generic extractor: it fetches any URL, internal ones included.
+            # vm.tiktok handles TikTok's vm./vt. short links.
+            "allowed_extractors": [
+                "youtube.*",
+                "tiktok.*",
+                r"vm\.tiktok",
+                "facebook.*",
+            ],
             "quiet": True,
             "noprogress": True,
         }

@@ -1,4 +1,5 @@
 from enum import StrEnum
+from urllib.parse import urlsplit
 
 from localreel.domain.exceptions import UnsupportedSource
 
@@ -20,14 +21,35 @@ class VideoSource(StrEnum):
 
     @classmethod
     def from_url(cls, url: str) -> VideoSource:
-        u = url.lower()
-        if "youtube.com" in u or "youtu.be" in u:
-            return cls.YOUTUBE
-        if "tiktok.com" in u:
-            return cls.TIKTOK
-        if "facebook.com" in u or "fb.watch" in u:
-            return cls.FACEBOOK
+        # The parsed host, not substrings: whatever passes here is fetched by
+        # the download worker from inside the server's network.
+        parts = urlsplit(url)
+        try:
+            port = parts.port
+        except ValueError as exc:
+            raise UnsupportedSource(f"Unsupported video source: {url}") from exc
+        host = parts.hostname or ""
+        # No userinfo: URL parsers disagree on where the host starts around "@".
+        if (
+            parts.scheme in ("http", "https")
+            and "@" not in parts.netloc
+            and port in (None, 80 if parts.scheme == "http" else 443)
+        ):
+            for domain, source in SOURCE_DOMAINS.items():
+                if host == domain or host.endswith("." + domain):
+                    return source
         raise UnsupportedSource(f"Unsupported video source: {url}")
+
+
+# Only hosts the downloader's allowed yt-dlp extractors handle. No fb.watch:
+# only yt-dlp's generic extractor follows those short links.
+SOURCE_DOMAINS = {
+    "youtube.com": VideoSource.YOUTUBE,
+    "youtu.be": VideoSource.YOUTUBE,
+    "youtube-nocookie.com": VideoSource.YOUTUBE,
+    "tiktok.com": VideoSource.TIKTOK,
+    "facebook.com": VideoSource.FACEBOOK,
+}
 
 
 class VideoVisibility(StrEnum):
