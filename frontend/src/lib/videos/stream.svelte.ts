@@ -56,6 +56,12 @@ export class VideoStream {
 		if (!this.#started) await this.restart(this.sort);
 	}
 
+	// New videos became ready elsewhere (the Add page): load afresh next time
+	// the Feed or the Library opens, keeping the chosen order.
+	invalidate(): void {
+		this.#started = false;
+	}
+
 	async restart(sort: VideoSort): Promise<void> {
 		this.#started = true;
 		this.#generation += 1;

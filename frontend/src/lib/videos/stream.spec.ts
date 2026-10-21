@@ -125,6 +125,18 @@ describe('VideoStream', () => {
 		expect(stream.position).toBe(24);
 	});
 
+	it('loads afresh after being invalidated', async () => {
+		const server = fakeServer(3);
+		const stream = new VideoStream(server.load);
+		await stream.ensureLoaded();
+
+		stream.invalidate();
+		await stream.ensureLoaded();
+
+		expect(server.requests).toHaveLength(2);
+		expect(stream.items).toHaveLength(3);
+	});
+
 	it('keeps what it has and reports when a page fails', async () => {
 		const stream = new VideoStream(async () => {
 			throw new Error('The server did not answer.');
