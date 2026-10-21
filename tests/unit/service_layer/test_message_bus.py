@@ -89,6 +89,16 @@ class TestEvents:
         with pytest.raises(KeyError, match="ThingDone"):
             bus.handle(ThingDone())
 
+    def test_returns_the_events_raised_while_handling(self):
+        bus = MessageBus(
+            command_handlers={DoThing: lambda cmd: [ThingDone(), OtherThingDone()]},
+            event_handlers={ThingDone: [], OtherThingDone: []},
+        )
+
+        events = bus.handle(DoThing())
+
+        assert events == [ThingDone(), OtherThingDone()]
+
     def test_event_registered_with_empty_handler_list_is_a_noop(self):
         bus = MessageBus(command_handlers={}, event_handlers={ThingDone: []})
 

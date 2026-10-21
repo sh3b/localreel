@@ -5,7 +5,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from localreel.adapters.downloader import YtDlpDownloader
 from localreel.adapters.transcoder import FfmpegTranscoder
 from localreel.adapters.unit_of_work import PostgresUnitOfWork
-from localreel.domain.commands import MarkDownloaded, MarkFailed, MarkReady, SubmitURL
+from localreel.domain.commands import (
+    MarkDownloaded,
+    MarkFailed,
+    MarkReady,
+    RetryVideo,
+    SubmitURL,
+)
 from localreel.domain.events import (
     SourceFileRemoved,
     TagsUpdated,
@@ -20,6 +26,7 @@ from localreel.service_layer.handlers.commands import (
     MarkDownloadedHandler,
     MarkFailedHandler,
     MarkReadyHandler,
+    RetryVideoHandler,
     SubmitURLHandler,
 )
 from localreel.service_layer.message_bus import MessageBus
@@ -59,6 +66,7 @@ class Container(containers.DeclarativeContainer):
                 MarkDownloaded: providers.Singleton(MarkDownloadedHandler, uow),
                 MarkReady: providers.Singleton(MarkReadyHandler, uow),
                 MarkFailed: providers.Singleton(MarkFailedHandler, uow),
+                RetryVideo: providers.Singleton(RetryVideoHandler, uow),
             }
         ),
         event_handlers=providers.Dict(

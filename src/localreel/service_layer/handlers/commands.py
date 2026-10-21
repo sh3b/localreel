@@ -3,7 +3,13 @@ import logging
 from uuid import uuid7
 
 from localreel.domain.abstractions.unit_of_work import AbstractUnitOfWork
-from localreel.domain.commands import MarkDownloaded, MarkFailed, MarkReady, SubmitURL
+from localreel.domain.commands import (
+    MarkDownloaded,
+    MarkFailed,
+    MarkReady,
+    RetryVideo,
+    SubmitURL,
+)
 from localreel.domain.messages import Event
 from localreel.domain.models.video import Video
 from localreel.domain.types import VideoSource
@@ -69,4 +75,14 @@ class MarkFailedHandler:
     def __call__(self, cmd: MarkFailed) -> list[Event]:
         video = self._uow.videos.get(cmd.video_id)
         video.mark_failed(cmd.reason)
+        return video.collect_events()
+
+
+class RetryVideoHandler:
+    def __init__(self, uow: AbstractUnitOfWork) -> None:
+        self._uow = uow
+
+    def __call__(self, cmd: RetryVideo) -> list[Event]:
+        video = self._uow.videos.get(cmd.video_id)
+        video.retry()
         return video.collect_events()

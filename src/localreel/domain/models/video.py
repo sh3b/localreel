@@ -200,6 +200,11 @@ class Video:
         self.error_message = reason
         self.events.append(VideoFailed(video_id=self.id, reason=reason))
 
+    def retry(self) -> None:
+        # Back to the start of the pipeline; the download worker claims it again.
+        self._transition(VideoStatus.PENDING)
+        self.error_message = None
+
     # --- behaviour ---
 
     def set_visibility(self, visibility: VideoVisibility) -> None:

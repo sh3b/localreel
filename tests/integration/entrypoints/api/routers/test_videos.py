@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from localreel.containers import Container
 from localreel.domain.models.video import Video
-from localreel.domain.types import VideoSource, VideoVisibility
+from localreel.domain.types import VideoSource, VideoStatus, VideoVisibility
 from tests.factories.video import VideoFactory
 
 
@@ -157,3 +157,121 @@ class TestListVideos:
         response = client.get("/videos", params={"sort": "popular"})
 
         assert response.status_code == 422
+
+
+def _youtube_url() -> str:
+    # A link no other test or real video uses. The tail of a UUIDv7 is random;
+    # its head is the timestamp, which repeats within a millisecond.
+    return f"https://youtube.com/watch?v={uuid7().hex[-11:]}"
+
+
+class TestSubmitURLs:
+    def test_reports_each_link_and_keeps_the_good_ones(
+        self, client: TestClient, container: Container
+    ) -> None:
+        first, second = _youtube_url(), _youtube_url()
+        urls = [first, second, first, "https://vimeo.com/12345"]
+
+        response = client.post(
+            "/videos/batch",
+            json={"urls": urls, "user_id": str(uuid7()), "visibility": "SHARED"},
+        )
+
+        assert response.status_code == 200
+        assert [r["result"] for r in response.json()] == [
+            "added",
+            "added",
+            "duplicate",
+            "unsupported",
+        ]
+        assert response.json()[3]["reason"] == (
+            "Unsupported video source: https://vimeo.com/12345"
+        )
+        uow = container.uow()
+        with uow:
+            for url in (first, second):
+                url_hash = hashlib.sha256(url.encode()).hexdigest()
+                assert uow.videos.get_by_source_url_hash(url_hash) is not None
+
+    def test_trims_links(self, client: TestClient) -> None:
+        url = _youtube_url()
+
+        response = client.post(
+            "/videos/batch", json={"urls": [f"  {url}  "], "user_id": str(uuid7())}
+        )
+
+        assert response.json() == [{"url": url, "result": "added", "reason": None}]
+
+    @pytest.mark.parametrize("urls", [[], ["   "], [_youtube_url()] * 101])
+    def test_rejects_an_empty_or_oversized_batch(
+        self, client: TestClient, urls: list[str]
+    ) -> None:
+        response = client.post(
+            "/videos/batch", json={"urls": urls, "user_id": str(uuid7())}
+        )
+
+        assert response.status_code == 422
+
+
+class TestQueue:
+    def test_lists_videos_still_in_the_pipeline_and_failed_ones(
+        self, client: TestClient, container: Container
+    ) -> None:
+        uow = container.uow()
+        with uow:
+            pending = VideoFactory()
+            failed = VideoFactory(source_url=_youtube_url())
+            failed.mark_downloading()
+            failed.mark_failed("HTTP 403")
+            ready = _ready_video()
+            for video in (pending, failed, ready):
+                uow.videos.add(video)
+            pending_id, failed_id, ready_id = (
+                str(v.id) for v in (pending, failed, ready)
+            )
+
+        response = client.get("/videos/queue")
+
+        assert response.status_code == 200
+        by_id = {item["id"]: item for item in response.json()}
+        assert by_id[pending_id]["status"] == "PENDING"
+        assert by_id[failed_id]["status"] == "FAILED"
+        assert by_id[failed_id]["error_message"] == "HTTP 403"
+        assert ready_id not in by_id
+
+
+class TestRetry:
+    def test_failed_video_goes_back_to_pending(
+        self, client: TestClient, container: Container
+    ) -> None:
+        uow = container.uow()
+        with uow:
+            video = VideoFactory()
+            video.mark_downloading()
+            video.mark_failed("HTTP 403")
+            uow.videos.add(video)
+            video_id = video.id
+
+        response = client.post(f"/videos/{video_id}/retry")
+
+        assert response.status_code == 202
+        with uow:
+            assert uow.videos.get(video_id).status is VideoStatus.PENDING
+
+    def test_a_video_that_has_not_failed_is_a_conflict(
+        self, client: TestClient, container: Container
+    ) -> None:
+        uow = container.uow()
+        with uow:
+            video = VideoFactory()
+            uow.videos.add(video)
+            video_id = video.id
+
+        response = client.post(f"/videos/{video_id}/retry")
+
+        assert response.status_code == 409
+
+    def test_an_unknown_video_is_not_found(self, client: TestClient) -> None:
+        response = client.post(f"/videos/{uuid7()}/retry")
+
+        assert response.status_code == 404

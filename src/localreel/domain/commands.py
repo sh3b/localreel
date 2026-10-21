@@ -34,3 +34,8 @@ class MarkReady(Command):
 class MarkFailed(Command):
     video_id: UUID
     reason: str
+
+
+@dataclass
+class RetryVideo(Command):
+    video_id: UUID

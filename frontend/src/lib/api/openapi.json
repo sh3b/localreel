@@ -124,6 +124,108 @@
           }
         }
       }
+    },
+    "/videos/batch": {
+      "post": {
+        "summary": "Submit Urls",
+        "operationId": "submit_urls_videos_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitURLsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SubmitResult"
+                  },
+                  "type": "array",
+                  "title": "Response Submit Urls Videos Batch Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/videos/queue": {
+      "get": {
+        "summary": "Queue",
+        "operationId": "queue_videos_queue_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QueueItem"
+                  },
+                  "type": "array",
+                  "title": "Response Queue Videos Queue Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/videos/{video_id}/retry": {
+      "post": {
+        "summary": "Retry",
+        "operationId": "retry_videos__video_id__retry_post",
+        "parameters": [
+          {
+            "name": "video_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Video Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -167,6 +269,100 @@
         ],
         "title": "HealthStatus"
       },
+      "QueueItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/VideoStatus"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "saved_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Saved At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "source_url",
+          "title",
+          "error_message",
+          "saved_at"
+        ],
+        "title": "QueueItem"
+      },
+      "SubmitResult": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "added",
+              "duplicate",
+              "unsupported"
+            ],
+            "title": "Result"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "result"
+        ],
+        "title": "SubmitResult"
+      },
       "SubmitURLRequest": {
         "properties": {
           "url": {
@@ -189,6 +385,35 @@
           "user_id"
         ],
         "title": "SubmitURLRequest"
+      },
+      "SubmitURLsRequest": {
+        "properties": {
+          "urls": {
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Urls"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/VideoVisibility",
+            "default": "PRIVATE"
+          }
+        },
+        "type": "object",
+        "required": [
+          "urls",
+          "user_id"
+        ],
+        "title": "SubmitURLsRequest"
       },
       "ValidationError": {
         "properties": {
@@ -407,6 +632,18 @@
           "oldest"
         ],
         "title": "VideoSort"
+      },
+      "VideoStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "DOWNLOADING",
+          "DOWNLOADED",
+          "TRANSCODING",
+          "READY",
+          "FAILED"
+        ],
+        "title": "VideoStatus"
       },
       "VideoVisibility": {
         "type": "string",

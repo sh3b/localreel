@@ -141,6 +141,25 @@ class TestStatusTransitions:
         assert VideoStatus.PENDING in Video.VALID_TRANSITIONS[VideoStatus.FAILED]
 
 
+class TestRetry:
+    def test_failed_video_goes_back_to_pending_without_its_error(self):
+        video = VideoFactory()
+        video.mark_downloading()
+        video.mark_failed("HTTP 403")
+
+        video.retry()
+
+        assert video.status is VideoStatus.PENDING
+        assert video.error_message is None
+
+    def test_only_a_failed_video_can_be_retried(self):
+        video = VideoFactory()
+        video.mark_downloading()
+
+        with pytest.raises(InvalidStatusTransition):
+            video.retry()
+
+
 class TestUpdateTags:
     def test_sets_tags_and_emits_delta(self):
         video = VideoFactory()

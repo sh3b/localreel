@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from localreel.domain.types import VideoStatus
+
 
 class VideoSort(StrEnum):
     NEWEST = "newest"
@@ -29,3 +31,12 @@ class VideoCard(BaseModel):
 class VideoPage(BaseModel):
     items: list[VideoCard]
     next_cursor: UUID | None
+
+
+class QueueItem(BaseModel):
+    id: UUID
+    status: VideoStatus
+    source_url: str | None
+    title: str | None
+    error_message: str | None
+    saved_at: datetime

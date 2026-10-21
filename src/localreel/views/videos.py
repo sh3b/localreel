@@ -8,10 +8,26 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from localreel.adapters.orm import videos
 from localreel.domain.types import VideoSource, VideoStatus
-from localreel.views.dtos import VideoCard, VideoPage, VideoSort
+from localreel.views.dtos import QueueItem, VideoCard, VideoPage, VideoSort
 
 # Must match `location /media/` in nginx.conf, which serves MEDIA_DIR.
 MEDIA_URL_PREFIX = "/media/"
+
+# The user's own title wins; otherwise the source's. Facebook puts the caption
+# in the description and a generic string in the title, so it is read first.
+_TITLE = func.coalesce(
+    videos.c.title,
+    case(
+        (
+            videos.c.source == VideoSource.FACEBOOK,
+            func.coalesce(videos.c.source_description, videos.c.source_title),
+        ),
+        else_=func.coalesce(videos.c.source_title, videos.c.source_description),
+    ),
+)
+
+# Not READY yet: in the pipeline, or failed and waiting for a retry.
+QUEUE_LIMIT = 100
 
 
 class VideoView:
@@ -19,21 +35,11 @@ class VideoView:
         self._session_factory = session_factory
 
     def list_videos(self, sort: VideoSort, after: UUID | None, limit: int) -> VideoPage:
-        title = func.coalesce(
-            videos.c.title,
-            case(
-                (
-                    videos.c.source == VideoSource.FACEBOOK,
-                    func.coalesce(videos.c.source_description, videos.c.source_title),
-                ),
-                else_=func.coalesce(videos.c.source_title, videos.c.source_description),
-            ),
-        )
         query = (
             select(
                 videos.c.id,
                 videos.c.source,
-                title.label("title"),
+                _TITLE.label("title"),
                 videos.c.source_uploader.label("uploader"),
                 videos.c.tags,
                 videos.c.duration_sec,
@@ -67,6 +73,35 @@ class VideoView:
         items = cards[:limit]
         next_cursor = items[-1].id if len(cards) > limit else None
         return VideoPage(items=items, next_cursor=next_cursor)
+
+    def queue(self) -> list[QueueItem]:
+        query = (
+            select(
+                videos.c.id,
+                videos.c.status,
+                videos.c.source_url,
+                _TITLE.label("title"),
+                videos.c.error_message,
+            )
+            .where(videos.c.status != VideoStatus.READY)
+            .order_by(videos.c.id.desc())
+            .limit(QUEUE_LIMIT)
+        )
+        session = self._session_factory()
+        try:
+            return [
+                QueueItem(
+                    id=r.id,
+                    status=r.status,
+                    source_url=r.source_url,
+                    title=r.title,
+                    error_message=r.error_message,
+                    saved_at=datetime.fromtimestamp(r.id.time / 1000, UTC),
+                )
+                for r in session.execute(query)
+            ]
+        finally:
+            session.close()
 
     @staticmethod
     def to_card(row: Mapping[Any, Any]) -> VideoCard:

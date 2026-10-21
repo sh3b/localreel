@@ -39,6 +39,57 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	'/videos/batch': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Submit Urls */
+		post: operations['submit_urls_videos_batch_post'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/videos/queue': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Queue */
+		get: operations['queue_videos_queue_get'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/videos/{video_id}/retry': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Retry */
+		post: operations['retry_videos__video_id__retry_post'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -61,10 +112,54 @@ export interface components {
 			 */
 			db: 'ok' | 'down';
 		};
+		/** QueueItem */
+		QueueItem: {
+			/**
+			 * Id
+			 * Format: uuid
+			 */
+			id: string;
+			status: components['schemas']['VideoStatus'];
+			/** Source Url */
+			source_url: string | null;
+			/** Title */
+			title: string | null;
+			/** Error Message */
+			error_message: string | null;
+			/**
+			 * Saved At
+			 * Format: date-time
+			 */
+			saved_at: string;
+		};
+		/** SubmitResult */
+		SubmitResult: {
+			/** Url */
+			url: string;
+			/**
+			 * Result
+			 * @enum {string}
+			 */
+			result: 'added' | 'duplicate' | 'unsupported';
+			/** Reason */
+			reason?: string | null;
+		};
 		/** SubmitURLRequest */
 		SubmitURLRequest: {
 			/** Url */
 			url: string;
+			/**
+			 * User Id
+			 * Format: uuid
+			 */
+			user_id: string;
+			/** @default PRIVATE */
+			visibility: components['schemas']['VideoVisibility'];
+		};
+		/** SubmitURLsRequest */
+		SubmitURLsRequest: {
+			/** Urls */
+			urls: string[];
 			/**
 			 * User Id
 			 * Format: uuid
@@ -133,6 +228,11 @@ export interface components {
 		 * @enum {string}
 		 */
 		VideoSort: 'newest' | 'oldest';
+		/**
+		 * VideoStatus
+		 * @enum {string}
+		 */
+		VideoStatus: 'PENDING' | 'DOWNLOADING' | 'DOWNLOADED' | 'TRANSCODING' | 'READY' | 'FAILED';
 		/**
 		 * VideoVisibility
 		 * @enum {string}
@@ -212,6 +312,90 @@ export interface operations {
 				'application/json': components['schemas']['SubmitURLRequest'];
 			};
 		};
+		responses: {
+			/** @description Successful Response */
+			202: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': unknown;
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	submit_urls_videos_batch_post: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['SubmitURLsRequest'];
+			};
+		};
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['SubmitResult'][];
+				};
+			};
+			/** @description Validation Error */
+			422: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['HTTPValidationError'];
+				};
+			};
+		};
+	};
+	queue_videos_queue_get: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Successful Response */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['QueueItem'][];
+				};
+			};
+		};
+	};
+	retry_videos__video_id__retry_post: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				video_id: string;
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
 		responses: {
 			/** @description Successful Response */
 			202: {

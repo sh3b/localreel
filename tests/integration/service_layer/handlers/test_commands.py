@@ -7,7 +7,13 @@ from sqlalchemy.orm import Session
 
 from localreel.adapters import orm
 from localreel.containers import Container
-from localreel.domain.commands import MarkDownloaded, MarkFailed, MarkReady, SubmitURL
+from localreel.domain.commands import (
+    MarkDownloaded,
+    MarkFailed,
+    MarkReady,
+    RetryVideo,
+    SubmitURL,
+)
 from localreel.domain.events import (
     VideoDownloaded,
     VideoFailed,
@@ -253,3 +259,22 @@ class TestMarkFailed:
             events = handler(MarkFailed(video_id=video_id, reason="boom"))
 
         assert events == [VideoFailed(video_id=video_id, reason="boom")]
+
+
+class TestRetryVideo:
+    def test_failed_video_goes_back_to_pending(self, container: Container) -> None:
+        uow = container.uow()
+        with uow:
+            video = VideoFactory()
+            video.mark_downloading()
+            video.mark_failed("HTTP 403")
+            uow.videos.add(video)
+            video_id = video.id
+
+        with uow:
+            container.message_bus().handle(RetryVideo(video_id=video_id))
+
+        with uow:
+            loaded = uow.videos.get(video_id)
+            assert loaded.status is VideoStatus.PENDING
+            assert loaded.error_message is None
