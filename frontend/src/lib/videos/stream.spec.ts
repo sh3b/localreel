@@ -83,6 +83,48 @@ describe('VideoStream', () => {
 		expect(server.requests.at(-1)).toMatchObject({ sort: 'oldest', after: null });
 	});
 
+	it('loads the new order when restarted while a page is still loading', async () => {
+		const answers: Array<() => void> = [];
+		const signals: AbortSignal[] = [];
+		const all = fakeServer(3);
+		const stream = new VideoStream((request, signal) => {
+			signals.push(signal);
+			return new Promise((resolve) => answers.push(() => resolve(all.load(request))));
+		});
+
+		const first = stream.restart('newest');
+		const second = stream.restart('oldest');
+		answers.forEach((answer) => answer());
+		await Promise.all([first, second]);
+
+		expect(signals[0].aborted).toBe(true);
+		expect(all.requests.map((r) => r.sort)).toEqual(['newest', 'oldest']);
+		expect(stream.items).toHaveLength(3);
+		expect(stream.sort).toBe('oldest');
+		expect(stream.loading).toBe(false);
+		expect(stream.error).toBeNull();
+	});
+
+	it('finishes a move past the last loaded video once the next page is in', async () => {
+		const server = fakeServer(30);
+		let failNext = false;
+		const stream = new VideoStream(async (request) => {
+			if (failNext) {
+				failNext = false;
+				throw new Error('The server did not answer.');
+			}
+			return server.load(request);
+		});
+		await stream.ensureLoaded();
+		failNext = true;
+		await stream.go(23);
+
+		await stream.step(1);
+
+		expect(stream.items).toHaveLength(30);
+		expect(stream.position).toBe(24);
+	});
+
 	it('keeps what it has and reports when a page fails', async () => {
 		const stream = new VideoStream(async () => {
 			throw new Error('The server did not answer.');

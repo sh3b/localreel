@@ -5,6 +5,12 @@
 	type Props = { video: VideoCard; position: string };
 
 	let { video, position }: Props = $props();
+
+	// Only ever link to a web page: a javascript: or data: URL here would run in
+	// this site. The API accepts only http(s) links, this keeps it that way.
+	const sourceLink = $derived(
+		video.source_url && /^https?:\/\//i.test(video.source_url) ? video.source_url : null
+	);
 </script>
 
 <div class="flex flex-col gap-3.5">
@@ -27,13 +33,13 @@
 			<dt>tags</dt>
 			<dd class="text-accent">{video.tags.map((tag) => `#${tag}`).join(' ')}</dd>
 		{/if}
-		{#if video.source_url}
+		{#if sourceLink}
 			<dt>source</dt>
 			<dd>
 				<!-- An external page, so SvelteKit's resolve() does not apply. -->
 				<!-- eslint-disable svelte/no-navigation-without-resolve -->
 				<a
-					href={video.source_url}
+					href={sourceLink}
 					target="_blank"
 					rel="noreferrer"
 					class="text-fg underline decoration-line-strong underline-offset-4 hover:decoration-accent"

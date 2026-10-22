@@ -4,29 +4,43 @@
 	type Props = {
 		video: VideoCard;
 		muted: boolean;
-		paused: boolean;
+		onpausedchange: (paused: boolean) => void;
 		onended?: () => void;
 	};
 
 	// The Feed recreates this component for every video (keyed on its id), so
-	// the position and length start fresh; kept across videos, bind:currentTime
-	// would start the next one where the last one ended.
-	let { video, muted = $bindable(), paused = $bindable(), onended }: Props = $props();
+	// the position, length and play state start fresh. Shared across videos,
+	// a replaced video would leak into the next one: bind:currentTime started it
+	// where the last one ended, and a replaced video's cancelled play() set
+	// bind:paused to true and paused the new one.
+	let { video, muted = $bindable(), onpausedchange, onended }: Props = $props();
 
 	let element = $state<HTMLVideoElement>();
+	let elementPaused = $state(true);
 	let currentTime = $state(0);
 	let duration = $state(0);
 	const progress = $derived(duration > 0 ? (currentTime / duration) * 100 : 0);
 
-	// Start each new video. If the browser refuses autoplay with sound, fall
-	// back to muted rather than showing a frozen frame.
+	// The page shows the play state; only this instance, while it lives, reports it.
+	$effect(() => {
+		onpausedchange(elementPaused);
+	});
+
+	export function togglePlay() {
+		elementPaused = !elementPaused;
+	}
+
+	// Start each new video. If the browser refuses autoplay with sound
+	// (NotAllowedError), fall back to muted rather than a frozen frame. Other
+	// failures, like the AbortError from skipping on quickly, leave sound alone.
 	$effect(() => {
 		const el = element;
 		if (!el || !video.playback_url) return;
-		el.play().catch(() => {
+		el.play().catch((error: DOMException) => {
+			if (error.name !== 'NotAllowedError') return;
 			muted = true;
 			el.muted = true;
-			el.play().catch(() => (paused = true));
+			el.play().catch(() => {});
 		});
 	});
 
@@ -38,7 +52,7 @@
 <div class="relative h-full w-full bg-media">
 	<video
 		bind:this={element}
-		bind:paused
+		bind:paused={elementPaused}
 		bind:currentTime
 		bind:duration
 		{muted}
@@ -47,7 +61,7 @@
 		playsinline
 		preload="auto"
 		{onended}
-		onclick={() => (paused = !paused)}
+		onclick={togglePlay}
 		class="h-full w-full cursor-pointer object-contain"
 	></video>
 

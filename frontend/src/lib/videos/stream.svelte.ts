@@ -1,13 +1,17 @@
 import { api, type VideoCard, type VideoPage, type VideoSort } from '#lib/api/client.ts';
 
 export type PageRequest = { sort: VideoSort; after: string | null; limit: number };
-export type PageLoader = (request: PageRequest) => Promise<VideoPage>;
+export type PageLoader = (request: PageRequest, signal: AbortSignal) => Promise<VideoPage>;
 
 const PAGE_SIZE = 24;
 
-async function loadFromApi({ sort, after, limit }: PageRequest): Promise<VideoPage> {
+async function loadFromApi(
+	{ sort, after, limit }: PageRequest,
+	signal: AbortSignal
+): Promise<VideoPage> {
 	const { data, error } = await api.GET('/videos', {
-		params: { query: { sort, limit, ...(after ? { after } : {}) } }
+		params: { query: { sort, limit, ...(after ? { after } : {}) } },
+		signal
 	});
 	if (error || !data) throw new Error('The server did not answer.');
 	return data;
@@ -26,6 +30,10 @@ export class VideoStream {
 
 	#cursor: string | null = null;
 	#started = false;
+	// Bumped by every restart. A page only lands in the list if no restart
+	// happened while it loaded; otherwise it belongs to the old list.
+	#generation = 0;
+	#request: AbortController | null = null;
 	#loadPage: PageLoader;
 
 	constructor(loadPage: PageLoader = loadFromApi) {
@@ -50,37 +58,56 @@ export class VideoStream {
 
 	async restart(sort: VideoSort): Promise<void> {
 		this.#started = true;
+		this.#generation += 1;
+		this.#request?.abort();
 		this.sort = sort;
 		this.items = [];
 		this.position = 0;
 		this.complete = false;
+		this.loading = false;
+		this.error = null;
 		this.#cursor = null;
 		await this.loadMore();
 	}
 
 	async loadMore(): Promise<void> {
 		if (this.loading || this.complete) return;
+		const generation = this.#generation;
+		const request = new AbortController();
+		this.#request = request;
 		this.loading = true;
 		this.error = null;
-		const sort = this.sort;
 		try {
-			const page = await this.#loadPage({ sort, after: this.#cursor, limit: PAGE_SIZE });
-			// A restart with another order may have happened while this page loaded.
-			if (sort !== this.sort) return;
+			const page = await this.#loadPage(
+				{ sort: this.sort, after: this.#cursor, limit: PAGE_SIZE },
+				request.signal
+			);
+			if (generation !== this.#generation) return;
 			this.items = [...this.items, ...page.items];
 			this.#cursor = page.next_cursor;
 			this.complete = page.next_cursor === null;
 		} catch (error) {
+			// A restart cancelled this request; that is not an error to show.
+			if (generation !== this.#generation) return;
 			this.error = error instanceof Error ? error.message : String(error);
 		} finally {
-			this.loading = false;
+			if (generation === this.#generation) this.loading = false;
 		}
 	}
 
 	// Moves the feed and starts loading the next page well before it is needed.
 	async go(index: number): Promise<void> {
-		this.position = Math.max(0, Math.min(index, this.items.length - 1));
-		if (this.items.length - this.position <= 3) await this.loadMore();
+		this.position = this.#clamp(index);
+		if (this.items.length - this.position > 3) return;
+		const before = this.position;
+		await this.loadMore();
+		// Asked to move past the last loaded video (the earlier load failed):
+		// finish the move now that the page is in, unless the feed moved meanwhile.
+		if (this.position === before) this.position = this.#clamp(index);
+	}
+
+	#clamp(index: number): number {
+		return Math.max(0, Math.min(index, this.items.length - 1));
 	}
 
 	async step(delta: 1 | -1): Promise<void> {

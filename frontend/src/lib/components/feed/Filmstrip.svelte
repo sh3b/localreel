@@ -13,7 +13,7 @@
 	);
 </script>
 
-<nav aria-label="Up next" class="flex flex-col gap-3">
+<nav aria-label="Now playing and up next" class="flex flex-col gap-3">
 	{#each visible as { video, index } (video.id)}
 		{@const current = index === position}
 		<button

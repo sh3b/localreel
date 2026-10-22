@@ -7,8 +7,9 @@
 	import Filmstrip from '#lib/components/feed/Filmstrip.svelte';
 	import PlayerControls from '#lib/components/feed/PlayerControls.svelte';
 	import VideoDetails from '#lib/components/feed/VideoDetails.svelte';
+	import VideoOverlay from '#lib/components/feed/VideoOverlay.svelte';
 	import { isTyping, shell } from '#lib/shell/shell.svelte.ts';
-	import { formatDuration, formatPosition, shapeOf } from '#lib/videos/format.ts';
+	import { formatPosition, shapeOf } from '#lib/videos/format.ts';
 	import { readSoundOn, saveSoundOn } from '#lib/videos/sound.ts';
 	import { stream } from '#lib/videos/stream.svelte.ts';
 
@@ -18,11 +19,35 @@
 	let fullscreen = $state(false);
 	let controlsVisible = $state(true);
 	let stage = $state<HTMLElement>();
+	let player = $state<ReturnType<typeof FeedVideo>>();
 	let hideTimer: ReturnType<typeof setTimeout> | undefined;
 
 	const video = $derived(stream.current);
 	const shape = $derived(video ? shapeOf(video.width, video.height) : 'portrait');
 	const position = $derived(formatPosition(stream.position, stream.items.length, stream.complete));
+
+	// How the stage is arranged. Fullscreen: the video fills the screen with the
+	// details over it. Otherwise, from tablet width up, an upright (portrait or
+	// square) video stands beside its details and a landscape one sits above
+	// them; on phones the video fills the stage with the details over it.
+	const layout = $derived(
+		fullscreen ? 'fullscreen' : shape === 'landscape' ? 'landscape' : 'upright'
+	);
+	const LAYOUT = {
+		fullscreen: { stage: '', video: '', details: '' },
+		upright: {
+			stage: 'md:gap-16 md:p-6',
+			video: 'md:aspect-(--ratio) md:w-auto md:max-w-[60%]',
+			details: 'w-80'
+		},
+		// The video takes the height left above the details and letterboxes
+		// inside it, so the column never overflows.
+		landscape: {
+			stage: 'md:flex-col md:gap-16 md:p-6',
+			video: 'md:aspect-(--ratio) md:min-h-0 md:w-auto md:max-w-full md:flex-1',
+			details: 'w-full max-w-5xl justify-between md:flex-row md:items-end'
+		}
+	};
 
 	onMount(() => {
 		muted = !readSoundOn();
@@ -33,7 +58,10 @@
 			{ keys: 'm', action: 'sound' }
 		];
 		void stream.ensureLoaded();
-		return () => clearTimeout(hideTimer);
+		return () => {
+			clearTimeout(hideTimer);
+			clearTimeout(wheelQuiet);
+		};
 	});
 
 	$effect(() => {
@@ -62,7 +90,7 @@
 	}
 
 	function togglePlay() {
-		paused = !paused;
+		player?.togglePlay();
 	}
 
 	function toggleSound() {
@@ -101,12 +129,16 @@
 		if (fullscreen) wake();
 	}
 
-	let lastWheel = 0;
+	// One scroll gesture moves one video. A trackpad fling keeps sending wheel
+	// events for a second or more while it slows down, so a gesture only ends
+	// once the events stop for a moment.
+	let wheelGesture = false;
+	let wheelQuiet: ReturnType<typeof setTimeout> | undefined;
 	function onwheel(event: WheelEvent) {
-		if (Math.abs(event.deltaY) < 30) return;
-		const now = performance.now();
-		if (now - lastWheel < 700) return;
-		lastWheel = now;
+		clearTimeout(wheelQuiet);
+		wheelQuiet = setTimeout(() => (wheelGesture = false), 200);
+		if (wheelGesture || Math.abs(event.deltaY) < 30) return;
+		wheelGesture = true;
 		void (event.deltaY > 0 ? next() : previous());
 	}
 
@@ -164,6 +196,17 @@
 		{/snippet}
 	</StatePanel>
 {:else if video}
+	{#snippet controls()}
+		<PlayerControls
+			{paused}
+			{muted}
+			{fullscreen}
+			onplay={togglePlay}
+			onsound={toggleSound}
+			onfullscreen={toggleFullscreen}
+		/>
+	{/snippet}
+
 	<div class="flex h-full">
 		<div
 			bind:this={stage}
@@ -178,78 +221,34 @@
 			{ontouchend}
 			onmousemove={fullscreen ? wake : undefined}
 		>
-			<div
-				class={[
-					'flex h-full w-full items-center justify-center',
-					!fullscreen && 'md:gap-16 md:p-6',
-					!fullscreen && shape === 'landscape' && 'md:flex-col md:gap-6'
-				]}
-			>
+			<div class={['flex h-full w-full items-center justify-center', LAYOUT[layout].stage]}>
 				<div
-					class={[
-						'relative h-full w-full',
-						// Portrait and square: as tall as the stage, width from the ratio.
-						// Landscape: takes the height left above the details and
-						// letterboxes inside it, so the column never overflows.
-						!fullscreen &&
-							(shape === 'landscape'
-								? 'md:aspect-(--ratio) md:min-h-0 md:w-auto md:max-w-full md:flex-1'
-								: 'md:aspect-(--ratio) md:w-auto md:max-w-[60%]')
-					]}
+					class={['relative h-full w-full', LAYOUT[layout].video]}
 					style:--ratio="{video.width ?? 9} / {video.height ?? 16}"
 				>
 					{#key video.id}
-						<FeedVideo {video} bind:muted bind:paused onended={next} />
+						<FeedVideo
+							bind:this={player}
+							{video}
+							bind:muted
+							onpausedchange={(value) => (paused = value)}
+							onended={next}
+						/>
 					{/key}
-
-					<!-- On phones, and in fullscreen, the details sit over the picture. -->
-					<div
-						class={[
-							'pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-2.5 bg-gradient-to-t from-black/90 to-transparent p-4 pt-24 text-white transition-opacity',
-							fullscreen ? !(controlsVisible || paused) && 'opacity-0' : 'md:hidden'
-						]}
+					<!-- Phones always; fullscreen fades it out while playing untouched. -->
+					<VideoOverlay
+						{video}
+						{position}
+						class={fullscreen ? (controlsVisible || paused ? '' : 'opacity-0') : 'md:hidden'}
 					>
-						<p class="text-accent">{position}</p>
-						<p class="font-title text-lg leading-snug font-medium">
-							{video.title ?? 'Untitled video'}
-						</p>
-						<p class="text-white/75">
-							{[video.uploader, formatDuration(video.duration_sec)].filter(Boolean).join(', ')}
-						</p>
-						{#if video.tags.length > 0}
-							<p class="text-accent">{video.tags.map((tag) => `#${tag}`).join(' ')}</p>
-						{/if}
-						<div class="pointer-events-auto">
-							<PlayerControls
-								{paused}
-								{muted}
-								{fullscreen}
-								onplay={togglePlay}
-								onsound={toggleSound}
-								onfullscreen={toggleFullscreen}
-							/>
-						</div>
-					</div>
+						{@render controls()}
+					</VideoOverlay>
 				</div>
 
 				{#if !fullscreen}
-					<aside
-						class={[
-							'hidden shrink-0 flex-col gap-6 md:flex',
-							shape === 'landscape'
-								? 'w-full max-w-5xl justify-between md:flex-row md:items-end'
-								: 'w-80'
-						]}
-					>
+					<aside class={['hidden shrink-0 flex-col gap-6 md:flex', LAYOUT[layout].details]}>
 						<VideoDetails {video} {position} />
-						<PlayerControls
-							{paused}
-							{muted}
-							{fullscreen}
-							onplay={togglePlay}
-							onsound={toggleSound}
-							onfullscreen={toggleFullscreen}
-						/>
+						{@render controls()}
 					</aside>
 				{/if}
 			</div>
