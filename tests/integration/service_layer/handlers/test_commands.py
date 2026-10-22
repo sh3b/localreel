@@ -49,13 +49,14 @@ class TestSubmitURL:
             )
 
         url_hash = hashlib.sha256(self.URL.encode()).hexdigest()
-        video = uow.videos.get_by_source_url_hash(url_hash)
-        assert video is not None
-        assert video.uploaded_by == user_id
-        assert video.status is VideoStatus.PENDING
-        assert video.source is VideoSource.YOUTUBE
-        assert video.source_url == self.URL
-        assert video.visibility is VideoVisibility.SHARED
+        with uow:
+            video = uow.videos.get_by_source_url_hash(url_hash)
+            assert video is not None
+            assert video.uploaded_by == user_id
+            assert video.status is VideoStatus.PENDING
+            assert video.source is VideoSource.YOUTUBE
+            assert video.source_url == self.URL
+            assert video.visibility is VideoVisibility.SHARED
 
     def test_resubmitting_the_same_url_creates_no_second_video(
         self, container: Container, session: Session
@@ -113,9 +114,10 @@ class TestSubmitURL:
             events = handler(cmd)
 
         url_hash = hashlib.sha256(self.URL.encode()).hexdigest()
-        video = uow.videos.get_by_source_url_hash(url_hash)
-        assert video is not None
-        assert events == [VideoIngested(video_id=video.id)]
+        with uow:
+            video = uow.videos.get_by_source_url_hash(url_hash)
+            assert video is not None
+            assert events == [VideoIngested(video_id=video.id)]
 
     def test_returns_no_events_on_duplicate(self, container: Container) -> None:
         uow = container.uow()

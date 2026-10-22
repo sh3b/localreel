@@ -32,9 +32,10 @@ class TestSubmitURL:
 
         uow = container.uow()
         url_hash = hashlib.sha256(self.URL.encode()).hexdigest()
-        video = uow.videos.get_by_source_url_hash(url_hash)
-        assert video is not None
-        assert video.uploaded_by == user_id
+        with uow:
+            video = uow.videos.get_by_source_url_hash(url_hash)
+            assert video is not None
+            assert video.uploaded_by == user_id
 
     def test_unsupported_source_returns_422(self, client: TestClient) -> None:
         response = client.post(
@@ -56,7 +57,9 @@ class TestSubmitURL:
 
         assert response.status_code == 422
         url_hash = hashlib.sha256(url.encode()).hexdigest()
-        assert container.uow().videos.get_by_source_url_hash(url_hash) is None
+        uow = container.uow()
+        with uow:
+            assert uow.videos.get_by_source_url_hash(url_hash) is None
 
 
 def _ready_video(tags: list[str] | None = None) -> Video:

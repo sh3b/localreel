@@ -6,7 +6,10 @@ from localreel.domain.abstractions.repository import AbstractVideoRepository
 
 
 class AbstractUnitOfWork(ABC):
-    videos: AbstractVideoRepository
+    @property
+    @abstractmethod
+    def videos(self) -> AbstractVideoRepository:
+        raise NotImplementedError
 
     def __enter__(self) -> Self:
         return self
