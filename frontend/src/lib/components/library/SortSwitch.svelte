@@ -17,7 +17,9 @@
 		<button
 			type="button"
 			aria-pressed={active}
-			onclick={() => !active && onchange(order.value)}
+			onclick={() => {
+				if (!active) onchange(order.value);
+			}}
 			class={[
 				'px-2 py-1',
 				active ? 'text-accent underline underline-offset-4' : 'text-faint hover:text-fg'

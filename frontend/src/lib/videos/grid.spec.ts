@@ -16,6 +16,10 @@ describe('gridMove', () => {
 		expect(gridMove(9, 'ArrowRight', 4, 10)).toBe(9);
 	});
 
+	it('stays put moving down onto the gap of a short last row', () => {
+		expect(gridMove(6, 'ArrowDown', 4, 10)).toBe(6);
+	});
+
 	it('jumps to the first and last tile', () => {
 		expect(gridMove(5, 'Home', 4, 10)).toBe(0);
 		expect(gridMove(5, 'End', 4, 10)).toBe(9);

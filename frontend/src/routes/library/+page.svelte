@@ -13,8 +13,9 @@
 
 	let focused = $state(0);
 	let grid = $state<HTMLElement>();
+	let scroller = $state<HTMLElement>();
 	let sentinel = $state<HTMLElement>();
-	const tiles: HTMLElement[] = $state([]);
+	const tiles: HTMLElement[] = [];
 
 	onMount(() => {
 		shell.hints = [
@@ -35,12 +36,19 @@
 		shell.status = count > 0 ? `${count}${stream.complete ? '' : '+'} videos ${stream.sort}` : '';
 	});
 
-	// Load the next page as the end of the grid scrolls into view.
+	// Load the next page while the end of the grid is within 600px of view.
+	// The margin is measured from the scrolling box, not the window, or it would
+	// never apply. The observer is rebuilt after every page because it only
+	// reports changes: on a screen tall enough to show every tile so far, the
+	// end never comes back into view, and loading would stop.
 	$effect(() => {
-		if (!sentinel) return;
+		void stream.items.length;
+		if (!sentinel || !scroller) return;
 		const observer = new IntersectionObserver(
-			(entries) => entries.some((e) => e.isIntersecting) && void stream.loadMore(),
-			{ rootMargin: '600px' }
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) void stream.loadMore();
+			},
+			{ root: scroller, rootMargin: '600px' }
 		);
 		observer.observe(sentinel);
 		return () => observer.disconnect();
@@ -96,7 +104,7 @@
 		<SortSwitch value={stream.sort} onchange={changeOrder} />
 	</div>
 
-	<div class="min-h-0 flex-1 overflow-y-auto">
+	<div bind:this={scroller} class="min-h-0 flex-1 overflow-y-auto">
 		{#if stream.items.length === 0}
 			{#if stream.error}
 				<StatePanel title="The library could not be loaded.">
