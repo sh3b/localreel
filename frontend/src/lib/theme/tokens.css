@@ -35,14 +35,24 @@
 	--lr-warn: #e0b44c;
 	--lr-danger: #e57373;
 
+	/* Text and marks over a video or thumbnail, which sit on a dark scrim */
+	--lr-scrim: #000000;
+	--lr-on-media: #ffffff;
+	--lr-on-media-muted: rgb(255 255 255 / 0.75);
+	--lr-media-accent: #ff8a3d;
+
 	/* Type */
 	--lr-font-ui: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
 	--lr-font-title: system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--lr-text-ui: 13px;
+	--lr-text-caption: 11px;
+	--lr-text-label: 10px;
 
 	/* Shape and rhythm */
 	--lr-radius: 0px;
 	--lr-tile-gap: 14px;
 	--lr-bar-height: 40px;
+	--lr-progress-height: 3px;
 }
 
 [data-theme='tool-light'] {
@@ -67,4 +77,10 @@
 	--lr-ok: #1f7a3d;
 	--lr-warn: #8a6100;
 	--lr-danger: #b42318;
+
+	/* The scrim stays dark here too, so these keep the dark theme's values */
+	--lr-scrim: #000000;
+	--lr-on-media: #ffffff;
+	--lr-on-media-muted: rgb(255 255 255 / 0.75);
+	--lr-media-accent: #ff8a3d;
 }

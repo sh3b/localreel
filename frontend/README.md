@@ -44,7 +44,12 @@ read CSS variables from `tokens.css`.
   top bar cycles through `THEMES`; `static/theme.js` applies the saved one
   before the first paint and needs no change.
 - **Add a token:** define `--lr-name` in every theme block, then map it in the
-  `@theme inline` block in `app.css` (`--color-name: var(--lr-name);`).
+  `@theme inline` block in `app.css` (`--color-name: var(--lr-name);`, or
+  `--text-name` for a type size, `--spacing-name` for a length).
+
+Text and marks over a video or thumbnail (`text-on-media`, `from-scrim/90`,
+`text-media-accent`) sit on a dark scrim in every theme, so a light theme keeps
+those tokens light-on-dark.
 
 ## API types
 

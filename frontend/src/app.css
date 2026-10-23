@@ -18,13 +18,21 @@
 	--color-ok: var(--lr-ok);
 	--color-warn: var(--lr-warn);
 	--color-danger: var(--lr-danger);
+	--color-scrim: var(--lr-scrim);
+	--color-on-media: var(--lr-on-media);
+	--color-on-media-muted: var(--lr-on-media-muted);
+	--color-media-accent: var(--lr-media-accent);
 
 	--font-ui: var(--lr-font-ui);
 	--font-title: var(--lr-font-title);
+	--text-ui: var(--lr-text-ui);
+	--text-caption: var(--lr-text-caption);
+	--text-label: var(--lr-text-label);
 
 	--radius-box: var(--lr-radius);
 	--spacing-tile: var(--lr-tile-gap);
 	--spacing-bar: var(--lr-bar-height);
+	--spacing-progress: var(--lr-progress-height);
 }
 
 @layer base {
@@ -38,7 +46,7 @@
 		background: var(--lr-bg);
 		color: var(--lr-fg);
 		font-family: var(--lr-font-ui);
-		font-size: 13px;
+		font-size: var(--lr-text-ui);
 		-webkit-font-smoothing: antialiased;
 	}
 

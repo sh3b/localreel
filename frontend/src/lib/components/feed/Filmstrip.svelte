@@ -29,7 +29,7 @@
 			{#if video.thumbnail_url}
 				<img src={video.thumbnail_url} alt="" loading="lazy" class="h-full w-full object-cover" />
 			{/if}
-			<span class="absolute bottom-1.5 left-1.5 bg-bg/75 px-1 text-[10px] text-fg">
+			<span class="absolute bottom-1.5 left-1.5 bg-bg/75 px-1 text-label text-fg">
 				{String(index + 1).padStart(2, '0')}
 			</span>
 		</button>

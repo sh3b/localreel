@@ -24,7 +24,7 @@
 
 <div class="flex h-dvh flex-col bg-bg text-fg">
 	<header class="flex h-bar shrink-0 items-center gap-6 border-b border-line px-4">
-		<a href={resolve('/')} class="text-[13px] font-bold text-accent">localreel</a>
+		<a href={resolve('/')} class="text-ui font-bold text-accent">localreel</a>
 		<nav aria-label="Main" class="hidden h-full items-stretch gap-6 md:flex">
 			{#each NAV as item (item.href)}
 				{@const active = isActive(item.href, page.url.pathname)}
@@ -66,7 +66,7 @@
 				href={resolve(item.href)}
 				aria-current={active ? 'page' : undefined}
 				class={[
-					'flex items-center justify-center border-t-2 text-[13px]',
+					'flex items-center justify-center border-t-2 text-ui',
 					active ? 'border-accent text-accent' : 'border-transparent text-faint'
 				]}
 			>
