@@ -124,7 +124,7 @@
 
 	function onkeydown(event: KeyboardEvent) {
 		if (isTyping(event) || event.metaKey || event.ctrlKey || event.altKey) return;
-		const actions: Record<string, () => unknown> = {
+		const actions: Record<string, () => void | Promise<void>> = {
 			j: next,
 			ArrowDown: next,
 			k: previous,
@@ -132,7 +132,9 @@
 			' ': togglePlay,
 			f: toggleFullscreen,
 			m: toggleSound,
-			g: () => finished && startOver()
+			g: () => {
+				if (finished) startOver();
+			}
 		};
 		const action = actions[event.key];
 		if (!action || stream.items.length === 0) return;

@@ -15,7 +15,11 @@ export default defineConfig(
 	{
 		rules: {
 			// TypeScript checks for undefined names; typescript-eslint advises turning this off.
-			'no-undef': 'off'
+			'no-undef': 'off',
+			// The shared config turns these off; the project template had them on, and
+			// `any` or a silenced type error should stay visible in review.
+			'@typescript-eslint/no-explicit-any': 'error',
+			'@typescript-eslint/ban-ts-comment': 'error'
 		}
 	},
 	{
@@ -52,9 +56,10 @@ export default defineConfig(
 			'no-restricted-imports': [
 				'error',
 				{
-					paths: [
+					// Any spelling of the client module, relative paths included.
+					patterns: [
 						{
-							name: '#lib/api/client.ts',
+							regex: 'api/client(\\.ts)?$',
 							importNames: ['api'],
 							message: 'Call the server from a state class in lib/ (see VideoStream, AddQueue).'
 						}
