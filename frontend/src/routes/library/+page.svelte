@@ -23,8 +23,10 @@
 			{ keys: 'enter', action: 'open in feed' },
 			{ keys: 's', action: 'change order' }
 		];
-		focused = stream.position;
 		void stream.ensureLoaded().then(async () => {
+			// Read after loading: a reload resets the position, and a stale one
+			// would leave no tile reachable by keyboard.
+			focused = stream.position;
 			await tick();
 			// Coming back from the Feed lands on the video that was playing.
 			tiles[focused]?.scrollIntoView({ block: 'center' });
