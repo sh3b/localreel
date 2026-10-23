@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { QueueItem } from '#lib/api/client.ts';
 	import { STATUS_LABEL } from '#lib/add/status.ts';
+	import type { QueueItem } from '#lib/api/client.ts';
 	import { secondaryButton } from '#lib/components/buttons.ts';
 
 	type Props = { items: QueueItem[]; retrying: Set<string>; onretry: (id: string) => void };

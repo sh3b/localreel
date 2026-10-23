@@ -27,16 +27,14 @@ function deferred<T>() {
 
 function server(overrides: Partial<QueueServer> = {}): QueueServer {
 	return {
-		queue: async () => [],
-		submit: async () => [],
+		queue: () => Promise.resolve([]),
+		submit: () => Promise.resolve([]),
 		retry: async () => {},
 		...overrides
 	};
 }
 
-const noNetwork = async () => {
-	throw new TypeError('Failed to fetch');
-};
+const noNetwork = () => Promise.reject(new TypeError('Failed to fetch'));
 
 describe('AddQueue', () => {
 	it('shows a failed load when the server cannot be reached, and clears it once it answers', async () => {
@@ -78,7 +76,10 @@ describe('AddQueue', () => {
 			[]
 		];
 		let ready = 0;
-		const queue = new AddQueue(() => (ready += 1), server({ queue: async () => answers.shift()! }));
+		const queue = new AddQueue(
+			() => (ready += 1),
+			server({ queue: () => Promise.resolve(answers.shift()!) })
+		);
 
 		await queue.refresh();
 		await queue.refresh();
@@ -107,7 +108,10 @@ describe('AddQueue', () => {
 		};
 		const queue = new AddQueue(
 			() => {},
-			server({ submit: async () => [result], queue: async () => [item('a', 'PENDING')] })
+			server({
+				submit: () => Promise.resolve([result]),
+				queue: () => Promise.resolve([item('a', 'PENDING')])
+			})
 		);
 
 		const results = await queue.send(['https://youtu.be/a']);

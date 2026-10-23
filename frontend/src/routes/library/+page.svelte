@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
-	import StatePanel from '#lib/components/StatePanel.svelte';
+	import type { VideoSort } from '#lib/api/client.ts';
 	import { primaryButton } from '#lib/components/buttons.ts';
 	import SortSwitch from '#lib/components/library/SortSwitch.svelte';
 	import TileContent from '#lib/components/library/TileContent.svelte';
+	import StatePanel from '#lib/components/StatePanel.svelte';
 	import { isTyping, shell } from '#lib/shell/shell.svelte.ts';
-	import type { VideoSort } from '#lib/api/client.ts';
 	import { gridMove } from '#lib/videos/grid.ts';
 	import { stream } from '#lib/videos/stream.svelte.ts';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 
 	let focused = $state(0);
 	let grid = $state<HTMLElement>();

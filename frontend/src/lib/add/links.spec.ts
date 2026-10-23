@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_LINKS, checkLines, linksToSend } from './links';
+import { checkLines, linksToSend, MAX_LINKS } from './links';
 
 describe('checkLines', () => {
 	it('numbers lines as typed and skips blank ones', () => {

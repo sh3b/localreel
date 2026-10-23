@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { THEMES, applyTheme, nextTheme, resolveTheme, type ThemeId } from '#lib/theme/themes.ts';
+	import { applyTheme, nextTheme, resolveTheme, THEMES, type ThemeId } from '#lib/theme/themes.ts';
 
 	let theme = $state<ThemeId>(THEMES[0].id);
 	const label = $derived(THEMES.find((t) => t.id === theme)?.label ?? theme);

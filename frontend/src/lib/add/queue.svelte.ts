@@ -1,5 +1,5 @@
 import { SvelteSet } from 'svelte/reactivity';
-import { GUEST_USER_ID, api, type QueueItem, type SubmitResult } from '#lib/api/client.ts';
+import { api, GUEST_USER_ID, type QueueItem, type SubmitResult } from '#lib/api/client.ts';
 import { isWorking } from './status.ts';
 
 export type QueueServer = {

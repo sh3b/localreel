@@ -24,12 +24,12 @@ function card(n: number): VideoCard {
 function fakeServer(total: number) {
 	const requests: PageRequest[] = [];
 	const all = Array.from({ length: total }, (_, i) => card(i));
-	async function load(request: PageRequest): Promise<VideoPage> {
+	function load(request: PageRequest): Promise<VideoPage> {
 		requests.push(request);
 		const start = request.after ? all.findIndex((c) => c.id === request.after) + 1 : 0;
 		const items = all.slice(start, start + request.limit);
 		const more = start + request.limit < all.length;
-		return { items, next_cursor: more ? items[items.length - 1].id : null };
+		return Promise.resolve({ items, next_cursor: more ? items[items.length - 1].id : null });
 	}
 	return { load, requests };
 }
@@ -157,9 +157,7 @@ describe('VideoStream', () => {
 	});
 
 	it('keeps what it has and reports when a page fails', async () => {
-		const stream = new VideoStream(async () => {
-			throw new Error('The server did not answer.');
-		});
+		const stream = new VideoStream(() => Promise.reject(new Error('The server did not answer.')));
 
 		await stream.ensureLoaded();
 

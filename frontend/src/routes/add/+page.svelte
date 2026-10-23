@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import type { SubmitResult } from '#lib/api/client.ts';
 	import { checkLines, linksToSend, MAX_LINKS, type PastedLine } from '#lib/add/links.ts';
 	import { AddQueue } from '#lib/add/queue.svelte.ts';
+	import type { SubmitResult } from '#lib/api/client.ts';
 	import QueueList from '#lib/components/add/QueueList.svelte';
 	import { primaryButton } from '#lib/components/buttons.ts';
 	import { isTyping, shell } from '#lib/shell/shell.svelte.ts';

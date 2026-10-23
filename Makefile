@@ -73,6 +73,9 @@ fe-install:
 fe-dev:
 	cd frontend && npm run dev
 
+fe-format:
+	cd frontend && npm run format
+
 fe-check:
 	cd frontend && npm run lint && npm run check
 

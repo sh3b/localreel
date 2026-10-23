@@ -1,11 +1,11 @@
 <script lang="ts">
 	import '../app.css';
+	import ThemeToggle from '#lib/components/ThemeToggle.svelte';
+	import { isActive, NAV } from '#lib/shell/nav.ts';
+	import { isTyping, shell } from '#lib/shell/shell.svelte.ts';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import ThemeToggle from '#lib/components/ThemeToggle.svelte';
-	import { NAV, isActive } from '#lib/shell/nav.ts';
-	import { isTyping, shell } from '#lib/shell/shell.svelte.ts';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
@@ -15,7 +15,7 @@
 		const item = NAV.find((n) => n.key === event.key);
 		if (item) {
 			event.preventDefault();
-			goto(resolve(item.href));
+			void goto(resolve(item.href));
 		}
 	}
 </script>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { THEMES, isThemeId, nextTheme, resolveTheme, type ThemeId } from './themes';
+import { isThemeId, nextTheme, resolveTheme, THEMES, type ThemeId } from './themes';
 
 describe('resolveTheme', () => {
 	it('keeps a saved theme that exists', () => {

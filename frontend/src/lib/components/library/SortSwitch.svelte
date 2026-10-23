@@ -5,7 +5,7 @@
 
 	let { value, onchange }: Props = $props();
 
-	const ORDERS: { value: VideoSort; label: string }[] = [
+	const ORDERS: Array<{ value: VideoSort; label: string }> = [
 		{ value: 'newest', label: 'newest' },
 		{ value: 'oldest', label: 'oldest' }
 	];

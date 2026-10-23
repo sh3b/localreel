@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { resolve } from '$app/paths';
-	import StatePanel from '#lib/components/StatePanel.svelte';
 	import { primaryButton, secondaryButton } from '#lib/components/buttons.ts';
 	import FeedVideo from '#lib/components/feed/FeedVideo.svelte';
 	import Filmstrip from '#lib/components/feed/Filmstrip.svelte';
 	import PlayerControls from '#lib/components/feed/PlayerControls.svelte';
 	import VideoDetails from '#lib/components/feed/VideoDetails.svelte';
 	import VideoOverlay from '#lib/components/feed/VideoOverlay.svelte';
+	import StatePanel from '#lib/components/StatePanel.svelte';
 	import { isTyping, shell } from '#lib/shell/shell.svelte.ts';
 	import { formatPosition, shapeOf } from '#lib/videos/format.ts';
 	import { readSoundOn, saveSoundOn } from '#lib/videos/sound.ts';
 	import { stream } from '#lib/videos/stream.svelte.ts';
+	import { resolve } from '$app/paths';
 
 	let muted = $state(true);
 	let paused = $state(false);
@@ -124,7 +124,7 @@
 
 	function onkeydown(event: KeyboardEvent) {
 		if (isTyping(event) || event.metaKey || event.ctrlKey || event.altKey) return;
-		const actions: Record<string, () => void> = {
+		const actions: Record<string, () => unknown> = {
 			j: next,
 			ArrowDown: next,
 			k: previous,
@@ -137,7 +137,7 @@
 		const action = actions[event.key];
 		if (!action || stream.items.length === 0) return;
 		event.preventDefault();
-		action();
+		void action();
 		if (fullscreen) wake();
 	}
 
