@@ -338,11 +338,24 @@
           "result": {
             "type": "string",
             "enum": [
-              "added",
-              "duplicate",
+              "ready",
+              "queued",
+              "failed",
               "unsupported"
             ],
             "title": "Result"
+          },
+          "video_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Id"
           },
           "reason": {
             "anyOf": [

@@ -1,3 +1,4 @@
+import hashlib
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
@@ -8,7 +9,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from localreel.adapters.orm import videos
 from localreel.domain.types import VideoSource, VideoStatus
-from localreel.views.dtos import QueueItem, VideoCard, VideoPage, VideoSort
+from localreel.views.dtos import (
+    QueueItem,
+    SavedLink,
+    VideoCard,
+    VideoPage,
+    VideoSort,
+)
 
 # Must match `location /media/` in nginx.conf, which serves MEDIA_DIR.
 MEDIA_URL_PREFIX = "/media/"
@@ -100,6 +107,28 @@ class VideoView:
                 )
                 for r in session.execute(query)
             ]
+        finally:
+            session.close()
+
+    def saved_links(self, urls: list[str]) -> dict[str, SavedLink]:
+        """The saved video for each of these links, keyed by link. Links with
+        no video are left out."""
+        # Looked up by the hash SubmitURLHandler stores, which is indexed.
+        by_hash = {hashlib.sha256(url.encode()).hexdigest(): url for url in urls}
+        query = select(
+            videos.c.id,
+            videos.c.status,
+            videos.c.error_message,
+            videos.c.source_url_hash,
+        ).where(videos.c.source_url_hash.in_(by_hash))
+        session = self._session_factory()
+        try:
+            return {
+                by_hash[r.source_url_hash]: SavedLink(
+                    id=r.id, status=r.status, error_message=r.error_message
+                )
+                for r in session.execute(query)
+            }
         finally:
             session.close()
 

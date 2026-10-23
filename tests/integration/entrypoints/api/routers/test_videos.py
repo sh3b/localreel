@@ -2,9 +2,12 @@ import hashlib
 from uuid import UUID, uuid7
 
 import pytest
+from dependency_injector import providers
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
 
 from localreel.containers import Container
+from localreel.domain.messages import Message
 from localreel.domain.models.video import Video
 from localreel.domain.types import VideoSource, VideoStatus, VideoVisibility
 from tests.factories.video import VideoFactory
@@ -165,12 +168,39 @@ def _youtube_url() -> str:
     return f"https://youtube.com/watch?v={uuid7().hex[-11:]}"
 
 
+def _saved(url: str) -> Video:
+    return VideoFactory(
+        source_url=url, source_url_hash=hashlib.sha256(url.encode()).hexdigest()
+    )
+
+
+class RaceLosingBus:
+    """Another request inserted the same link between the duplicate check and
+    this request's insert."""
+
+    def handle(self, message: Message) -> None:
+        raise IntegrityError("INSERT INTO videos", {}, Exception("unique"))
+
+
 class TestSubmitURLs:
-    def test_reports_each_link_and_keeps_the_good_ones(
+    def test_reports_what_each_link_is_now(
         self, client: TestClient, container: Container
     ) -> None:
-        first, second = _youtube_url(), _youtube_url()
-        urls = [first, second, first, "https://vimeo.com/12345"]
+        new, ready_url, failed_url = _youtube_url(), _youtube_url(), _youtube_url()
+        uow = container.uow()
+        with uow:
+            ready = _saved(ready_url)
+            ready.mark_downloading()
+            ready.mark_downloaded("v.webm")
+            ready.mark_transcoding()
+            ready.mark_ready("vid/vid.mp4", "vid/vid-thumbnail.jpg", 50, 1080, 1920)
+            failed = _saved(failed_url)
+            failed.mark_downloading()
+            failed.mark_failed("HTTP 403")
+            uow.videos.add(ready)
+            uow.videos.add(failed)
+            ready_id, failed_id = str(ready.id), str(failed.id)
+        urls = [new, new, ready_url, failed_url, "https://vimeo.com/12345"]
 
         response = client.post(
             "/videos/batch",
@@ -178,20 +208,44 @@ class TestSubmitURLs:
         )
 
         assert response.status_code == 200
-        assert [r["result"] for r in response.json()] == [
-            "added",
-            "added",
-            "duplicate",
+        results = response.json()
+        assert [r["result"] for r in results] == [
+            "queued",
+            "queued",
+            "ready",
+            "failed",
             "unsupported",
         ]
-        assert response.json()[3]["reason"] == (
-            "Unsupported video source: https://vimeo.com/12345"
-        )
+        assert results[0]["video_id"] is not None
+        assert results[1]["video_id"] == results[0]["video_id"]
+        assert results[2]["video_id"] == ready_id
+        assert results[3]["video_id"] == failed_id
+        assert results[3]["reason"] == "HTTP 403"
+        assert results[4] == {
+            "url": "https://vimeo.com/12345",
+            "result": "unsupported",
+            "video_id": None,
+            "reason": "Unsupported video source: https://vimeo.com/12345",
+        }
+
+    def test_reports_a_link_saved_by_another_request_at_the_same_moment(
+        self, client: TestClient, container: Container
+    ) -> None:
+        url = _youtube_url()
         uow = container.uow()
         with uow:
-            for url in (first, second):
-                url_hash = hashlib.sha256(url.encode()).hexdigest()
-                assert uow.videos.get_by_source_url_hash(url_hash) is not None
+            video = _saved(url)
+            uow.videos.add(video)
+            video_id = str(video.id)
+
+        with container.message_bus.override(providers.Object(RaceLosingBus())):
+            response = client.post(
+                "/videos/batch", json={"urls": [url], "user_id": str(uuid7())}
+            )
+
+        assert response.json() == [
+            {"url": url, "result": "queued", "video_id": video_id, "reason": None}
+        ]
 
     def test_trims_links(self, client: TestClient) -> None:
         url = _youtube_url()
@@ -200,7 +254,8 @@ class TestSubmitURLs:
             "/videos/batch", json={"urls": [f"  {url}  "], "user_id": str(uuid7())}
         )
 
-        assert response.json() == [{"url": url, "result": "added", "reason": None}]
+        assert response.json()[0]["url"] == url
+        assert response.json()[0]["result"] == "queued"
 
     @pytest.mark.parametrize("urls", [[], ["   "], [_youtube_url()] * 101])
     def test_rejects_an_empty_or_oversized_batch(

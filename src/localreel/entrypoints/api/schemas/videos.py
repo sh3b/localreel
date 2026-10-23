@@ -26,5 +26,8 @@ class SubmitURLsRequest(BaseModel):
 
 class SubmitResult(BaseModel):
     url: str
-    result: Literal["added", "duplicate", "unsupported"]
+    # What the link is now: ready in the library, queued on its way, failed on
+    # an earlier try (reason has the error), or unsupported and not saved.
+    result: Literal["ready", "queued", "failed", "unsupported"]
+    video_id: UUID | None = None
     reason: str | None = None

@@ -40,3 +40,9 @@ class QueueItem(BaseModel):
     title: str | None
     error_message: str | None
     saved_at: datetime
+
+
+class SavedLink(BaseModel):
+    id: UUID
+    status: VideoStatus
+    error_message: str | None

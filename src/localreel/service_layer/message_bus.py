@@ -19,21 +19,16 @@ class MessageBus:
         self.command_handlers = command_handlers
         self.event_handlers = event_handlers
 
-    def handle(self, message: Message) -> list[Event]:
-        """Handle a message and everything it triggers. Returns the events
-        handled along the way, so a caller can tell what happened."""
+    def handle(self, message: Message) -> None:
         queue: deque[Message] = deque([message])
-        events: list[Event] = []
         while queue:
             msg = queue.popleft()
             if isinstance(msg, Command):
                 self._handle_command(msg, queue)
             elif isinstance(msg, Event):
-                events.append(msg)
                 self._handle_event(msg, queue)
             else:
                 raise TypeError(f"{msg!r} is neither a Command nor an Event")
-        return events
 
     def _handle_command(self, command: Command, queue: deque[Message]) -> None:
         handler = self.command_handlers[type(command)]

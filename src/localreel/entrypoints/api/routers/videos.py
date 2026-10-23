@@ -1,17 +1,19 @@
+from typing import Literal
 from uuid import UUID
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import IntegrityError
 
 from localreel.containers import Container
 from localreel.domain.abstractions.unit_of_work import AbstractUnitOfWork
 from localreel.domain.commands import RetryVideo, SubmitURL
-from localreel.domain.events import VideoIngested
 from localreel.domain.exceptions import (
     InvalidStatusTransition,
     UnsupportedSource,
     VideoNotFound,
 )
+from localreel.domain.types import VideoStatus
 from localreel.entrypoints.api.schemas.videos import (
     SubmitResult,
     SubmitURLRequest,
@@ -58,19 +60,45 @@ def submit_urls(
     body: SubmitURLsRequest,
     bus: MessageBus = Depends(Provide[Container.message_bus]),
     uow: AbstractUnitOfWork = Depends(Provide[Container.uow]),
+    video_view: VideoView = Depends(Provide[Container.video_view]),
 ) -> list[SubmitResult]:
     # One transaction per link, so one bad link never undoes the others.
-    results: list[SubmitResult] = []
+    unsupported: dict[str, str] = {}
     for url in body.urls:
         command = SubmitURL(url=url, user_id=body.user_id, visibility=body.visibility)
         try:
             with uow:
-                events = bus.handle(command)
+                bus.handle(command)
         except UnsupportedSource as exc:
-            results.append(SubmitResult(url=url, result="unsupported", reason=str(exc)))
+            unsupported[url] = str(exc)
+        except IntegrityError:
+            # Another request saved the same link between the duplicate check
+            # and the insert. The read below reports that video.
+            pass
+
+    # What each link is now, read back like any other query.
+    saved = video_view.saved_links([url for url in body.urls if url not in unsupported])
+    results: list[SubmitResult] = []
+    for url in body.urls:
+        if url in unsupported:
+            results.append(
+                SubmitResult(url=url, result="unsupported", reason=unsupported[url])
+            )
             continue
-        added = any(isinstance(event, VideoIngested) for event in events)
-        results.append(SubmitResult(url=url, result="added" if added else "duplicate"))
+        if url not in saved:
+            raise RuntimeError(f"{url} was submitted but no video was saved")
+        link = saved[url]
+        if link.status is VideoStatus.READY:
+            result: Literal["ready", "queued", "failed"] = "ready"
+        elif link.status is VideoStatus.FAILED:
+            result = "failed"
+        else:
+            result = "queued"
+        results.append(
+            SubmitResult(
+                url=url, result=result, video_id=link.id, reason=link.error_message
+            )
+        )
     return results
 
 

@@ -140,7 +140,9 @@ export interface components {
 			 * Result
 			 * @enum {string}
 			 */
-			result: 'added' | 'duplicate' | 'unsupported';
+			result: 'ready' | 'queued' | 'failed' | 'unsupported';
+			/** Video Id */
+			video_id?: string | null;
 			/** Reason */
 			reason?: string | null;
 		};
