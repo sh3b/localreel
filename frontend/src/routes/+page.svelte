@@ -17,6 +17,8 @@
 	let paused = $state(false);
 	let finished = $state(false);
 	let fullscreen = $state(false);
+	// iPhone Safari has no element fullscreen: no button, and f does nothing.
+	let canFullscreen = $state(false);
 	let controlsVisible = $state(true);
 	let stage = $state<HTMLElement>();
 	let player = $state<ReturnType<typeof FeedVideo>>();
@@ -51,10 +53,11 @@
 
 	onMount(() => {
 		muted = !readSoundOn();
+		canFullscreen = document.fullscreenEnabled === true;
 		shell.hints = [
 			{ keys: 'j k', action: 'next / previous' },
 			{ keys: 'space', action: 'play / pause' },
-			{ keys: 'f', action: 'fullscreen' },
+			...(canFullscreen ? [{ keys: 'f', action: 'fullscreen' }] : []),
 			{ keys: 'm', action: 'sound' }
 		];
 		void stream.ensureLoaded();
@@ -98,9 +101,14 @@
 		saveSoundOn(!muted);
 	}
 
+	// A refused request (no user gesture, a permissions policy) leaves the page
+	// as it was, and fullscreenchange never fires, so there is nothing to undo.
 	function toggleFullscreen() {
-		if (document.fullscreenElement) void document.exitFullscreen();
-		else void stage?.requestFullscreen();
+		if (!canFullscreen) return;
+		const change = document.fullscreenElement
+			? document.exitFullscreen()
+			: stage?.requestFullscreen();
+		change?.catch(() => {});
 	}
 
 	// In fullscreen the details fade out while playing and come back on input.
@@ -201,6 +209,7 @@
 			{paused}
 			{muted}
 			{fullscreen}
+			{canFullscreen}
 			onplay={togglePlay}
 			onsound={toggleSound}
 			onfullscreen={toggleFullscreen}

@@ -4,12 +4,13 @@
 		paused: boolean;
 		muted: boolean;
 		fullscreen: boolean;
+		canFullscreen: boolean;
 		onplay: () => void;
 		onsound: () => void;
 		onfullscreen: () => void;
 	};
 
-	let { paused, muted, fullscreen, onplay, onsound, onfullscreen }: Props = $props();
+	let { paused, muted, fullscreen, canFullscreen, onplay, onsound, onfullscreen }: Props = $props();
 
 	const button =
 		'min-h-11 border border-line-strong bg-bg/60 px-3 text-fg hover:border-accent hover:text-fg-strong';
@@ -24,8 +25,10 @@
 		<kbd class="text-faint">m</kbd>
 		{muted ? 'sound on' : 'mute'}
 	</button>
-	<button type="button" class={button} onclick={onfullscreen}>
-		<kbd class="text-faint">f</kbd>
-		{fullscreen ? 'exit fullscreen' : 'fullscreen'}
-	</button>
+	{#if canFullscreen}
+		<button type="button" class={button} onclick={onfullscreen}>
+			<kbd class="text-faint">f</kbd>
+			{fullscreen ? 'exit fullscreen' : 'fullscreen'}
+		</button>
+	{/if}
 </div>
