@@ -16,7 +16,12 @@ STATUS_BY_EXCEPTION: dict[type[Exception], int] = {
 
 
 def handle_domain_error(_request: Request, exc: Exception) -> JSONResponse:
-    code = STATUS_BY_EXCEPTION.get(type(exc), status.HTTP_400_BAD_REQUEST)
+    # isinstance, so a subclass of a mapped exception gets its parent's status.
+    code = status.HTTP_400_BAD_REQUEST
+    for exception_type, mapped_code in STATUS_BY_EXCEPTION.items():
+        if isinstance(exc, exception_type):
+            code = mapped_code
+            break
     return JSONResponse(status_code=code, content={"detail": str(exc)})
 
 
