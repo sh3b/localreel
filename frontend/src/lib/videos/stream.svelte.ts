@@ -34,6 +34,9 @@ export class VideoStream {
 	// happened while it loaded; otherwise it belongs to the old list.
 	#generation = 0;
 	#request: AbortController | null = null;
+	// The load in flight, so a second caller can wait for it instead of
+	// returning before the page is in.
+	#pending: Promise<void> = Promise.resolve();
 	#loadPage: PageLoader;
 
 	constructor(loadPage: PageLoader = loadFromApi) {
@@ -76,8 +79,13 @@ export class VideoStream {
 		await this.loadMore();
 	}
 
-	async loadMore(): Promise<void> {
-		if (this.loading || this.complete) return;
+	loadMore(): Promise<void> {
+		if (this.complete) return Promise.resolve();
+		if (!this.loading) this.#pending = this.#load();
+		return this.#pending;
+	}
+
+	async #load(): Promise<void> {
 		const generation = this.#generation;
 		const request = new AbortController();
 		this.#request = request;
@@ -107,8 +115,8 @@ export class VideoStream {
 		if (this.items.length - this.position > 3) return;
 		const before = this.position;
 		await this.loadMore();
-		// Asked to move past the last loaded video (the earlier load failed):
-		// finish the move now that the page is in, unless the feed moved meanwhile.
+		// Asked to move past the last loaded video (the earlier load failed or is
+		// still running): finish the move now that the page is in, unless the feed moved meanwhile.
 		if (this.position === before) this.position = this.#clamp(index);
 	}
 

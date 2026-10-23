@@ -125,6 +125,25 @@ describe('VideoStream', () => {
 		expect(stream.position).toBe(24);
 	});
 
+	it('finishes a move past the last loaded video while that page is loading', async () => {
+		const server = fakeServer(30);
+		const answers: Array<() => void> = [];
+		const stream = new VideoStream(
+			(request) => new Promise((resolve) => answers.push(() => resolve(server.load(request))))
+		);
+		const loaded = stream.ensureLoaded();
+		answers.shift()?.();
+		await loaded;
+
+		const prefetch = stream.go(23);
+		const skip = stream.step(1);
+		answers.shift()?.();
+		await Promise.all([prefetch, skip]);
+
+		expect(stream.items).toHaveLength(30);
+		expect(stream.position).toBe(24);
+	});
+
 	it('loads afresh after being invalidated', async () => {
 		const server = fakeServer(3);
 		const stream = new VideoStream(server.load);
