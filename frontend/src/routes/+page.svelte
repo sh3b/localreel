@@ -32,24 +32,26 @@
 	// details over it. Otherwise, from tablet width up, an upright (portrait or
 	// square) video stands beside its details and a landscape one sits above
 	// them; on phones the video fills the stage with the details over it.
-	const layout = $derived(
-		fullscreen ? 'fullscreen' : shape === 'landscape' ? 'landscape' : 'upright'
-	);
+	const SHAPE_LAYOUT = { portrait: 'upright', square: 'upright', landscape: 'landscape' } as const;
+	const layout = $derived(fullscreen ? 'fullscreen' : SHAPE_LAYOUT[shape]);
 	const LAYOUT = {
-		fullscreen: { stage: '', video: '', details: '' },
+		fullscreen: { stage: '', video: '', details: '', overlay: '' },
 		upright: {
 			stage: 'md:gap-16 md:p-6',
 			video: 'md:aspect-(--ratio) md:w-auto md:max-w-[60%]',
-			details: 'w-80'
+			details: 'w-80',
+			overlay: 'md:hidden'
 		},
 		// The video takes the height left above the details and letterboxes
 		// inside it, so the column never overflows.
 		landscape: {
 			stage: 'md:flex-col md:gap-16 md:p-6',
 			video: 'md:aspect-(--ratio) md:min-h-0 md:w-auto md:max-w-full md:flex-1',
-			details: 'w-full max-w-5xl justify-between md:flex-row md:items-end'
+			details: 'w-full max-w-5xl justify-between md:flex-row md:items-end',
+			overlay: 'md:hidden'
 		}
 	};
+	const overlayIdle = $derived(fullscreen && !controlsVisible && !paused);
 
 	onMount(() => {
 		muted = !readSoundOn();
@@ -259,7 +261,7 @@
 					<VideoOverlay
 						{video}
 						{position}
-						class={fullscreen ? (controlsVisible || paused ? '' : 'opacity-0') : 'md:hidden'}
+						class={[LAYOUT[layout].overlay, overlayIdle && 'opacity-0']}
 					>
 						{@render controls()}
 					</VideoOverlay>
