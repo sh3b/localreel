@@ -221,6 +221,15 @@
 			{ontouchend}
 			onmousemove={fullscreen ? wake : undefined}
 		>
+			{#if stream.error}
+				<!-- A later page failed; without this the feed just stops at the last loaded video. -->
+				<p class="absolute inset-x-0 top-0 z-10 bg-bg/80 p-3 text-center text-danger">
+					{stream.error}
+					<button type="button" class="underline" onclick={() => stream.loadMore()}
+						>try again</button
+					>
+				</p>
+			{/if}
 			<div class={['flex h-full w-full items-center justify-center', LAYOUT[layout].stage]}>
 				<div
 					class={['relative h-full w-full', LAYOUT[layout].video]}
