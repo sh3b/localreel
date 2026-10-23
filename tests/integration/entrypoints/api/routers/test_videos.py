@@ -295,8 +295,14 @@ class TestRetry:
         response = client.post(f"/videos/{video_id}/retry")
 
         assert response.status_code == 409
+        assert response.json() == {
+            "detail": f"Invalid transition PENDING -> PENDING for video {video_id}"
+        }
 
     def test_an_unknown_video_is_not_found(self, client: TestClient) -> None:
-        response = client.post(f"/videos/{uuid7()}/retry")
+        video_id = uuid7()
+
+        response = client.post(f"/videos/{video_id}/retry")
 
         assert response.status_code == 404
+        assert response.json() == {"detail": f"Video {video_id} not found"}

@@ -8,7 +8,7 @@ from localreel.domain.exceptions import (
     VideoNotFound,
 )
 
-STATUS_BY_EXCEPTION: dict[type[Exception], int] = {
+STATUS_BY_EXCEPTION: dict[type[DomainError], int] = {
     UnsupportedSource: status.HTTP_422_UNPROCESSABLE_CONTENT,
     VideoNotFound: status.HTTP_404_NOT_FOUND,
     InvalidStatusTransition: status.HTTP_409_CONFLICT,
@@ -17,6 +17,7 @@ STATUS_BY_EXCEPTION: dict[type[Exception], int] = {
 
 def handle_domain_error(_request: Request, exc: Exception) -> JSONResponse:
     # isinstance, so a subclass of a mapped exception gets its parent's status.
+    # The first match wins: list a mapped subclass before its parent.
     code = status.HTTP_400_BAD_REQUEST
     for exception_type, mapped_code in STATUS_BY_EXCEPTION.items():
         if isinstance(exc, exception_type):
