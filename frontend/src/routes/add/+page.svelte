@@ -34,8 +34,9 @@
 	};
 
 	const RESULT: Record<SubmitResult['result'], { label: string; tone: string }> = {
-		added: { label: 'added', tone: 'text-ok' },
-		duplicate: { label: 'already added', tone: 'text-warn' },
+		queued: { label: 'queued', tone: 'text-ok' },
+		ready: { label: 'already in your library', tone: 'text-warn' },
+		failed: { label: 'failed earlier, retry it in the queue', tone: 'text-danger' },
 		unsupported: { label: 'not supported', tone: 'text-danger' }
 	};
 
