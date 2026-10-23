@@ -2,12 +2,9 @@ import hashlib
 from uuid import UUID, uuid7
 
 import pytest
-from dependency_injector import providers
 from fastapi.testclient import TestClient
-from sqlalchemy.exc import IntegrityError
 
 from localreel.containers import Container
-from localreel.domain.messages import Message
 from localreel.domain.models.video import Video
 from localreel.domain.types import VideoSource, VideoStatus, VideoVisibility
 from tests.factories.video import VideoFactory
@@ -174,14 +171,6 @@ def _saved(url: str) -> Video:
     )
 
 
-class RaceLosingBus:
-    """Another request inserted the same link between the duplicate check and
-    this request's insert."""
-
-    def handle(self, message: Message) -> None:
-        raise IntegrityError("INSERT INTO videos", {}, Exception("unique"))
-
-
 class TestSubmitURLs:
     def test_reports_what_each_link_is_now(
         self, client: TestClient, container: Container
@@ -227,25 +216,6 @@ class TestSubmitURLs:
             "video_id": None,
             "reason": "Unsupported video source: https://vimeo.com/12345",
         }
-
-    def test_reports_a_link_saved_by_another_request_at_the_same_moment(
-        self, client: TestClient, container: Container
-    ) -> None:
-        url = _youtube_url()
-        uow = container.uow()
-        with uow:
-            video = _saved(url)
-            uow.videos.add(video)
-            video_id = str(video.id)
-
-        with container.message_bus.override(providers.Object(RaceLosingBus())):
-            response = client.post(
-                "/videos/batch", json={"urls": [url], "user_id": str(uuid7())}
-            )
-
-        assert response.json() == [
-            {"url": url, "result": "queued", "video_id": video_id, "reason": None}
-        ]
 
     def test_trims_links(self, client: TestClient) -> None:
         url = _youtube_url()

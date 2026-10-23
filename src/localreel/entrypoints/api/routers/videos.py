@@ -3,7 +3,6 @@ from uuid import UUID
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.exc import IntegrityError
 
 from localreel.containers import Container
 from localreel.domain.abstractions.unit_of_work import AbstractUnitOfWork
@@ -71,10 +70,6 @@ def submit_urls(
                 bus.handle(command)
         except UnsupportedSource as exc:
             unsupported[url] = str(exc)
-        except IntegrityError:
-            # Another request saved the same link between the duplicate check
-            # and the insert. The read below reports that video.
-            pass
 
     # What each link is now, read back like any other query.
     saved = video_view.saved_links([url for url in body.urls if url not in unsupported])
@@ -85,8 +80,6 @@ def submit_urls(
                 SubmitResult(url=url, result="unsupported", reason=unsupported[url])
             )
             continue
-        if url not in saved:
-            raise RuntimeError(f"{url} was submitted but no video was saved")
         link = saved[url]
         if link.status is VideoStatus.READY:
             result: Literal["ready", "queued", "failed"] = "ready"
