@@ -90,7 +90,7 @@
 					{results.length === 1 ? 'link' : 'links'} sent
 				</h1>
 				<ul class="border-t border-line">
-					{#each results as result, index (index)}
+					{#each results as result (result.url)}
 						<li class="flex flex-col gap-0.5 border-b border-line py-2.5">
 							<span class="flex justify-between gap-4">
 								<span class="truncate text-fg">{result.url}</span>
