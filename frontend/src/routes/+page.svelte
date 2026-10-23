@@ -87,9 +87,11 @@
 		await stream.step(-1);
 	}
 
+	// Reloads rather than rewinds: videos that finished downloading since the
+	// list loaded show up, without the Feed polling the server.
 	function startOver() {
 		finished = false;
-		void stream.go(0);
+		void stream.restart(stream.sort);
 	}
 
 	function togglePlay() {
