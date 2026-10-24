@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -11,6 +12,10 @@ from localreel.domain.types import VideoSource, VideoStatus
 
 
 class PostgresVideoRepository(AbstractVideoRepository):
+    """Every video loaded to be changed is locked (FOR UPDATE) until the
+    transaction ends, so two writers never change it from separate reads.
+    get_by_source_url_hash only answers "is this URL saved?" and takes no lock."""
+
     def __init__(self, session: Session) -> None:
         self._session = session
 
@@ -18,7 +23,11 @@ class PostgresVideoRepository(AbstractVideoRepository):
         self._session.add(video)
 
     def get(self, video_id: UUID) -> Video:
-        video = self._session.get(Video, video_id)
+        # populate_existing: a copy already loaded in this transaction is
+        # refreshed from the locked row, never written back stale.
+        video = self._session.get(
+            Video, video_id, with_for_update=True, populate_existing=True
+        )
         if video is None:
             raise VideoNotFound(f"Video {video_id} not found")
         return video
@@ -50,3 +59,14 @@ class PostgresVideoRepository(AbstractVideoRepository):
             .limit(1)
         )
         return self._session.scalars(stmt).first()
+
+    def get_stalled(self, status: VideoStatus, beat_before: datetime) -> list[Video]:
+        # SKIP LOCKED: a row its worker is persisting right now is not stalled,
+        # and two sweeps never fail the same row.
+        stmt = (
+            select(Video)
+            .where(orm.videos.c.status == status)
+            .where(orm.videos.c.heartbeat_at < beat_before)
+            .with_for_update(skip_locked=True)
+        )
+        return list(self._session.scalars(stmt))

@@ -9,6 +9,7 @@ from localreel.domain.commands import (
     MarkDownloaded,
     MarkFailed,
     MarkReady,
+    RecordHeartbeat,
     RetryVideo,
     SubmitURL,
 )
@@ -21,14 +22,17 @@ from localreel.domain.events import (
     VideoReady,
     WatchRecorded,
 )
+from localreel.domain.types import VideoStatus
 from localreel.service_layer.download import download_next_pending
 from localreel.service_layer.handlers.commands import (
     MarkDownloadedHandler,
     MarkFailedHandler,
     MarkReadyHandler,
+    RecordHeartbeatHandler,
     RetryVideoHandler,
     SubmitURLHandler,
 )
+from localreel.service_layer.heartbeat import fail_stalled
 from localreel.service_layer.message_bus import MessageBus
 from localreel.service_layer.transcode import transcode_next_downloaded
 from localreel.settings import Settings
@@ -67,6 +71,7 @@ class Container(containers.DeclarativeContainer):
                 MarkReady: providers.Singleton(MarkReadyHandler, uow),
                 MarkFailed: providers.Singleton(MarkFailedHandler, uow),
                 RetryVideo: providers.Singleton(RetryVideoHandler, uow),
+                RecordHeartbeat: providers.Singleton(RecordHeartbeatHandler, uow),
             }
         ),
         event_handlers=providers.Dict(
@@ -88,6 +93,7 @@ class Container(containers.DeclarativeContainer):
         uow=uow,
         message_bus=message_bus,
         downloader=downloader,
+        heartbeat_interval_sec=settings.provided.heartbeat_interval_sec,
     )
 
     transcode_pending = providers.Callable(
@@ -96,6 +102,23 @@ class Container(containers.DeclarativeContainer):
         message_bus=message_bus,
         transcoder=transcoder,
         downloads_dir=settings.provided.downloads_dir,
+        heartbeat_interval_sec=settings.provided.heartbeat_interval_sec,
+    )
+
+    fail_stalled_downloads = providers.Callable(
+        fail_stalled,
+        uow=uow,
+        message_bus=message_bus,
+        status=VideoStatus.DOWNLOADING,
+        stalled_after_sec=settings.provided.stalled_after_sec,
+    )
+
+    fail_stalled_transcodes = providers.Callable(
+        fail_stalled,
+        uow=uow,
+        message_bus=message_bus,
+        status=VideoStatus.TRANSCODING,
+        stalled_after_sec=settings.provided.stalled_after_sec,
     )
 
     video_view = providers.Singleton(VideoView, session_factory=session_factory)

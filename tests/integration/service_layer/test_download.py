@@ -5,6 +5,7 @@ import pytest
 
 from localreel.containers import Container
 from localreel.domain.abstractions.downloader import AbstractDownloader, DownloadResult
+from localreel.domain.commands import MarkFailed
 from localreel.domain.types import VideoStatus
 from localreel.domain.value_objects.source_metadata import SourceMetadata
 from localreel.service_layer.download import download_next_pending
@@ -20,6 +21,10 @@ _METADATA = SourceMetadata(
     view_count=42984,
     raw={"id": "aBcDeFgHiJk", "extractor": "youtube"},
 )
+# Longer than any test, so no beat fires: a second thread would share the
+# test's single connection.
+_HEARTBEAT_SEC = 3600.0
+
 _RESULT = DownloadResult(original_path="x.mp4", source_metadata=_METADATA)
 
 
@@ -40,6 +45,20 @@ class _FakeDownloader(AbstractDownloader):
         return self._result
 
 
+class _SweptMidDownload(AbstractDownloader):
+    """Has the sweep fail the video while the download runs."""
+
+    def __init__(self, container: Container) -> None:
+        self._container = container
+
+    def download(self, *, url: str, video_id: UUID) -> DownloadResult:
+        with self._container.uow():
+            self._container.message_bus().handle(
+                MarkFailed(video_id=video_id, reason="worker stalled")
+            )
+        return _RESULT
+
+
 class TestDownloadNextPending:
     def test_claims_downloads_and_marks_downloaded(self, container: Container) -> None:
         uow = container.uow()
@@ -49,7 +68,10 @@ class TestDownloadNextPending:
             video_id = video.id
 
         did_work = download_next_pending(
-            uow, container.message_bus(), _FakeDownloader(result=_RESULT)
+            uow,
+            container.message_bus(),
+            _FakeDownloader(result=_RESULT),
+            _HEARTBEAT_SEC,
         )
 
         assert did_work is True
@@ -68,7 +90,10 @@ class TestDownloadNextPending:
             video_id = video.id
 
         did_work = download_next_pending(
-            uow, container.message_bus(), _FakeDownloader(error=RuntimeError("boom"))
+            uow,
+            container.message_bus(),
+            _FakeDownloader(error=RuntimeError("boom")),
+            _HEARTBEAT_SEC,
         )
 
         assert did_work is True
@@ -89,7 +114,10 @@ class TestDownloadNextPending:
 
         with pytest.raises(type(interruption)):
             download_next_pending(
-                uow, container.message_bus(), _FakeDownloader(error=interruption)
+                uow,
+                container.message_bus(),
+                _FakeDownloader(error=interruption),
+                _HEARTBEAT_SEC,
             )
 
         with uow:
@@ -101,7 +129,27 @@ class TestDownloadNextPending:
         uow = container.uow()
 
         did_work = download_next_pending(
-            uow, container.message_bus(), _FakeDownloader(result=_RESULT)
+            uow,
+            container.message_bus(),
+            _FakeDownloader(result=_RESULT),
+            _HEARTBEAT_SEC,
         )
 
         assert did_work is False
+
+    def test_outcome_after_a_sweep_is_dropped(self, container: Container) -> None:
+        uow = container.uow()
+        with uow:
+            video = VideoFactory()
+            uow.videos.add(video)
+            video_id = video.id
+
+        did_work = download_next_pending(
+            uow, container.message_bus(), _SweptMidDownload(container), _HEARTBEAT_SEC
+        )
+
+        assert did_work is True
+        with uow:
+            loaded = uow.videos.get(video_id)
+            assert loaded.status is VideoStatus.FAILED
+            assert loaded.error_message == "worker stalled"

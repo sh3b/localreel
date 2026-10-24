@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 def run(container: Container) -> None:
     poll_interval = container.settings().transcode_poll_interval_sec
     while True:
+        # Every round, not only when idle: a queue that never empties would
+        # never sweep. A video stranded while this worker is busy is swept
+        # after the current job, which is no later than it could run again.
+        container.fail_stalled_transcodes()
         did_work: bool = container.transcode_pending()
         if not did_work:
             time.sleep(poll_interval)

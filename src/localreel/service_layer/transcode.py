@@ -5,6 +5,8 @@ from uuid import UUID
 from localreel.domain.abstractions.transcoder import AbstractTranscoder
 from localreel.domain.abstractions.unit_of_work import AbstractUnitOfWork
 from localreel.domain.commands import MarkFailed, MarkReady
+from localreel.domain.exceptions import InvalidStatusTransition
+from localreel.service_layer.heartbeat import Heartbeat
 from localreel.service_layer.message_bus import MessageBus
 
 logger = logging.getLogger(__name__)
@@ -15,6 +17,7 @@ def transcode_next_downloaded(
     message_bus: MessageBus,
     transcoder: AbstractTranscoder,
     downloads_dir: str,
+    heartbeat_interval_sec: float,
 ) -> bool:
     """Claim one downloaded video, normalize it, and persist the outcome.
 
@@ -24,7 +27,9 @@ def transcode_next_downloaded(
 
     If the process is told to stop mid-transcode (SIGTERM becomes `SystemExit`,
     Ctrl-C is `KeyboardInterrupt`), the video is marked failed before the
-    interruption propagates, so it is not stranded in `TRANSCODING`.
+    interruption propagates, so it is not stranded in `TRANSCODING`. A worker
+    killed outright can't do that; its heartbeat stops instead, and
+    `fail_stalled` marks the video failed.
     """
     claimed = _claim_next(uow)
     if claimed is None:
@@ -32,15 +37,16 @@ def transcode_next_downloaded(
     video_id, original_path = claimed
     absolute_path = os.path.join(downloads_dir, original_path)
     try:
-        outcome: MarkReady | MarkFailed = _transcode(
-            transcoder, video_id, absolute_path
-        )
+        with Heartbeat(uow, message_bus, video_id, heartbeat_interval_sec):
+            outcome: MarkReady | MarkFailed = _transcode(
+                transcoder, video_id, absolute_path
+            )
     except SystemExit, KeyboardInterrupt:
-        with uow:
-            message_bus.handle(MarkFailed(video_id=video_id, reason="worker shut down"))
+        _persist(
+            uow, message_bus, MarkFailed(video_id=video_id, reason="worker shut down")
+        )
         raise
-    with uow:
-        message_bus.handle(outcome)
+    _persist(uow, message_bus, outcome)
     return True
 
 
@@ -55,6 +61,18 @@ def _claim_next(uow: AbstractUnitOfWork) -> tuple[UUID, str] | None:
         if video.original_path is None:
             raise RuntimeError(f"claimed video {video.id} with no original_path")
         return video.id, video.original_path
+
+
+def _persist(
+    uow: AbstractUnitOfWork, message_bus: MessageBus, outcome: MarkReady | MarkFailed
+) -> None:
+    try:
+        with uow:
+            message_bus.handle(outcome)
+    except InvalidStatusTransition:
+        # The sweep failed the video while this transcode ran (its beats were
+        # late), so the video is no longer ours to finish.
+        logger.warning("dropped a late outcome for video %s", outcome.video_id)
 
 
 def _transcode(

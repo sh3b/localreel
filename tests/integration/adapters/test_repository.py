@@ -1,9 +1,11 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import uuid7
 
 import pytest
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
+from localreel.adapters import orm
 from localreel.adapters.repository import PostgresVideoRepository
 from localreel.containers import Container
 from localreel.domain.exceptions import VideoNotFound
@@ -70,6 +72,22 @@ class TestPostgresVideoRepository:
 
         with pytest.raises(VideoNotFound):
             repository.get(uuid7())
+
+    def test_get_refreshes_a_copy_loaded_earlier_in_the_transaction(
+        self, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory()
+        repository.add(video)
+        session.commit()
+        repository.get(video.id)
+        session.execute(
+            update(orm.videos)
+            .where(orm.videos.c.id == video.id)
+            .values(status=VideoStatus.FAILED)
+        )
+
+        assert repository.get(video.id).status is VideoStatus.FAILED
 
     def test_get_by_source_url_hash_returns_the_video(self, session: Session) -> None:
         repository = PostgresVideoRepository(session)
@@ -155,3 +173,37 @@ class TestPostgresVideoRepository:
         session.commit()
 
         assert repository.get_next_downloaded() is None
+
+    def test_get_stalled_returns_rows_whose_beats_stopped(
+        self, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        stalled = VideoFactory()
+        stalled.mark_downloading()
+        stalled.heartbeat_at = datetime.now(UTC) - timedelta(minutes=10)
+        alive = VideoFactory()
+        alive.mark_downloading()
+        repository.add(stalled)
+        repository.add(alive)
+        session.commit()
+
+        found = repository.get_stalled(
+            VideoStatus.DOWNLOADING, datetime.now(UTC) - timedelta(minutes=2)
+        )
+
+        assert stalled in found
+        assert alive not in found
+
+    def test_get_stalled_looks_at_one_status_only(self, session: Session) -> None:
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory()
+        video.mark_downloading()
+        video.heartbeat_at = datetime.now(UTC) - timedelta(minutes=10)
+        repository.add(video)
+        session.commit()
+
+        found = repository.get_stalled(
+            VideoStatus.TRANSCODING, datetime.now(UTC) - timedelta(minutes=2)
+        )
+
+        assert video not in found

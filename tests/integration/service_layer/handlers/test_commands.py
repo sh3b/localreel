@@ -1,4 +1,5 @@
 import hashlib
+from datetime import UTC, datetime
 from uuid import UUID, uuid7
 
 import pytest
@@ -11,6 +12,7 @@ from localreel.domain.commands import (
     MarkDownloaded,
     MarkFailed,
     MarkReady,
+    RecordHeartbeat,
     RetryVideo,
     SubmitURL,
 )
@@ -278,3 +280,23 @@ class TestRetryVideo:
             loaded = uow.videos.get(video_id)
             assert loaded.status is VideoStatus.PENDING
             assert loaded.error_message is None
+
+
+class TestRecordHeartbeat:
+    def test_moves_the_heartbeat_forward(self, container: Container) -> None:
+        old_beat = datetime(2026, 1, 1, tzinfo=UTC)
+        uow = container.uow()
+        with uow:
+            video = VideoFactory()
+            video.mark_downloading()
+            video.heartbeat_at = old_beat
+            uow.videos.add(video)
+            video_id = video.id
+
+        with uow:
+            container.message_bus().handle(RecordHeartbeat(video_id=video_id))
+
+        with uow:
+            loaded = uow.videos.get(video_id)
+            assert loaded.heartbeat_at is not None
+            assert loaded.heartbeat_at > old_beat

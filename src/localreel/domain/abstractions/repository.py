@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 from uuid import UUID
 
 from localreel.domain.models.video import Video
+from localreel.domain.types import VideoStatus
 
 
 class AbstractVideoRepository(ABC):
@@ -23,4 +25,8 @@ class AbstractVideoRepository(ABC):
 
     @abstractmethod
     def get_next_downloaded(self) -> Video | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_stalled(self, status: VideoStatus, beat_before: datetime) -> list[Video]:
         raise NotImplementedError

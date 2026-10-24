@@ -64,6 +64,7 @@ videos = Table(
     Column("view_count", Integer, nullable=False),
     Column("source_file_available", Boolean, nullable=False),
     Column("error_message", Text, nullable=True),
+    Column("heartbeat_at", DateTime(timezone=True), nullable=True),
 )
 
 mapper_registry.map_imperatively(Video, videos)

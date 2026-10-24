@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     transcode_poll_interval_sec: float
     transcode_timeout_sec: float
 
+    heartbeat_interval_sec: float
+    stalled_after_sec: float
+
     @property
     def db_url(self) -> URL:
         return URL.create(
