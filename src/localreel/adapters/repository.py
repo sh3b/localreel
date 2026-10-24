@@ -12,8 +12,9 @@ from localreel.domain.types import VideoSource, VideoStatus
 
 
 class PostgresVideoRepository(AbstractVideoRepository):
-    """Every video it returns is locked (FOR UPDATE) until the transaction ends,
-    so two writers never change the same video from separate reads."""
+    """Every video loaded to be changed is locked (FOR UPDATE) until the
+    transaction ends, so two writers never change it from separate reads.
+    get_by_source_url_hash only answers "is this URL saved?" and takes no lock."""
 
     def __init__(self, session: Session) -> None:
         self._session = session
@@ -32,11 +33,7 @@ class PostgresVideoRepository(AbstractVideoRepository):
         return video
 
     def get_by_source_url_hash(self, source_url_hash: str) -> Video | None:
-        stmt = (
-            select(Video)
-            .where(orm.videos.c.source_url_hash == source_url_hash)
-            .with_for_update()
-        )
+        stmt = select(Video).where(orm.videos.c.source_url_hash == source_url_hash)
         return self._session.scalars(stmt).first()
 
     def get_next_pending(self) -> Video | None:
