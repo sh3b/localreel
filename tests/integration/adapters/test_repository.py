@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import uuid7
 
 import pytest
@@ -155,3 +155,37 @@ class TestPostgresVideoRepository:
         session.commit()
 
         assert repository.get_next_downloaded() is None
+
+    def test_get_stalled_returns_rows_whose_beats_stopped(
+        self, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        stalled = VideoFactory()
+        stalled.mark_downloading()
+        stalled.heartbeat_at = datetime.now(UTC) - timedelta(minutes=10)
+        alive = VideoFactory()
+        alive.mark_downloading()
+        repository.add(stalled)
+        repository.add(alive)
+        session.commit()
+
+        found = repository.get_stalled(
+            VideoStatus.DOWNLOADING, datetime.now(UTC) - timedelta(minutes=2)
+        )
+
+        assert stalled in found
+        assert alive not in found
+
+    def test_get_stalled_looks_at_one_status_only(self, session: Session) -> None:
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory()
+        video.mark_downloading()
+        video.heartbeat_at = datetime.now(UTC) - timedelta(minutes=10)
+        repository.add(video)
+        session.commit()
+
+        found = repository.get_stalled(
+            VideoStatus.TRANSCODING, datetime.now(UTC) - timedelta(minutes=2)
+        )
+
+        assert video not in found

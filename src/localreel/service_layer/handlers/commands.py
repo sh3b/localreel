@@ -7,6 +7,7 @@ from localreel.domain.commands import (
     MarkDownloaded,
     MarkFailed,
     MarkReady,
+    RecordHeartbeat,
     RetryVideo,
     SubmitURL,
 )
@@ -85,4 +86,14 @@ class RetryVideoHandler:
     def __call__(self, cmd: RetryVideo) -> list[Event]:
         video = self._uow.videos.get(cmd.video_id)
         video.retry()
+        return video.collect_events()
+
+
+class RecordHeartbeatHandler:
+    def __init__(self, uow: AbstractUnitOfWork) -> None:
+        self._uow = uow
+
+    def __call__(self, cmd: RecordHeartbeat) -> list[Event]:
+        video = self._uow.videos.get(cmd.video_id)
+        video.beat()
         return video.collect_events()

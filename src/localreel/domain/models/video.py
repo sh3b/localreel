@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import ClassVar
 from uuid import UUID
 
@@ -33,6 +34,11 @@ class Video:
         VideoStatus.READY: frozenset(),
         VideoStatus.FAILED: frozenset({VideoStatus.PENDING}),  # retry
     }
+    # A worker holds the video while it is in one of these; heartbeat_at shows
+    # it is still alive.
+    IN_PROGRESS: ClassVar[frozenset[VideoStatus]] = frozenset(
+        {VideoStatus.DOWNLOADING, VideoStatus.TRANSCODING}
+    )
 
     def __init__(
         self,
@@ -60,6 +66,7 @@ class Video:
         view_count: int,
         source_file_available: bool,
         error_message: str | None,
+        heartbeat_at: datetime | None,
     ):
         self.id = id
         self.uploaded_by = uploaded_by
@@ -84,6 +91,7 @@ class Video:
         self.view_count = view_count
         self.source_file_available = source_file_available
         self.error_message = error_message
+        self.heartbeat_at = heartbeat_at
 
         self.events: list[Event] = []
 
@@ -150,6 +158,7 @@ class Video:
             view_count=0,
             source_file_available=False,
             error_message=None,
+            heartbeat_at=None,
         )
         video.events.append(VideoIngested(video_id=id))
         return video
@@ -162,6 +171,16 @@ class Video:
                 f"Invalid transition {self.status} -> {new_status} for video {self.id}"
             )
         self.status = new_status
+        # The claim is the first beat; leaving the worker's hands ends them.
+        self.heartbeat_at = (
+            datetime.now(UTC) if new_status in self.IN_PROGRESS else None
+        )
+
+    def beat(self) -> None:
+        # A no-op once the job is over: the worker's last beat can land after
+        # its outcome, or after a sweep marked the video failed.
+        if self.status in self.IN_PROGRESS:
+            self.heartbeat_at = datetime.now(UTC)
 
     def mark_downloading(self) -> None:
         self._transition(VideoStatus.DOWNLOADING)

@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from uuid import uuid7
 
 import pytest
@@ -158,6 +159,56 @@ class TestRetry:
 
         with pytest.raises(InvalidStatusTransition):
             video.retry()
+
+
+class TestHeartbeat:
+    OLD_BEAT = datetime(2026, 1, 1, tzinfo=UTC)
+
+    def test_a_new_video_has_no_heartbeat(self):
+        assert VideoFactory().heartbeat_at is None
+
+    def test_a_claim_is_the_first_beat(self):
+        video = VideoFactory()
+        video.mark_downloading()
+        assert video.heartbeat_at is not None
+
+        video.mark_downloaded("v.webm")
+        video.mark_transcoding()
+        assert video.heartbeat_at is not None
+
+    @pytest.mark.parametrize("finish", ["downloaded", "ready", "failed"])
+    def test_leaving_the_worker_clears_the_heartbeat(self, finish: str) -> None:
+        video = VideoFactory()
+        video.mark_downloading()
+        if finish == "downloaded":
+            video.mark_downloaded("v.webm")
+        elif finish == "ready":
+            video.mark_downloaded("v.webm")
+            video.mark_transcoding()
+            video.mark_ready("v.mp4", "v.jpg")
+        else:
+            video.mark_failed("boom")
+
+        assert video.heartbeat_at is None
+
+    def test_beat_moves_the_heartbeat_forward(self):
+        video = VideoFactory()
+        video.mark_downloading()
+        video.heartbeat_at = self.OLD_BEAT
+
+        video.beat()
+
+        assert video.heartbeat_at > self.OLD_BEAT
+
+    def test_beat_after_the_job_is_over_does_nothing(self):
+        video = VideoFactory()
+        video.mark_downloading()
+        video.mark_failed("worker stalled")
+
+        video.beat()
+
+        assert video.heartbeat_at is None
+        assert video.status is VideoStatus.FAILED
 
 
 class TestUpdateTags:

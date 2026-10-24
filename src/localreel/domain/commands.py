@@ -39,3 +39,8 @@ class MarkFailed(Command):
 @dataclass
 class RetryVideo(Command):
     video_id: UUID
+
+
+@dataclass
+class RecordHeartbeat(Command):
+    video_id: UUID
