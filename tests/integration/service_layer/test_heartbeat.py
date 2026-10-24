@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from uuid import UUID
 
 from localreel.containers import Container
 from localreel.domain.types import VideoStatus
@@ -60,3 +61,44 @@ class TestFailStalled:
 
         with uow:
             assert uow.videos.get(video_id).status is VideoStatus.DOWNLOADING
+
+
+class TestWorkerSweeps:
+    @staticmethod
+    def _stale(container: Container, *, transcoding: bool) -> UUID:
+        uow = container.uow()
+        with uow:
+            video = VideoFactory()
+            video.mark_downloading()
+            if transcoding:
+                video.mark_downloaded("x.webm")
+                video.mark_transcoding()
+            video.heartbeat_at = datetime.now(UTC) - timedelta(hours=1)
+            uow.videos.add(video)
+            return video.id
+
+    @staticmethod
+    def _status(container: Container, video_id: UUID) -> VideoStatus:
+        uow = container.uow()
+        with uow:
+            return uow.videos.get(video_id).status
+
+    def test_download_worker_sweeps_only_downloads(self, container: Container) -> None:
+        downloading = self._stale(container, transcoding=False)
+        transcoding = self._stale(container, transcoding=True)
+
+        container.fail_stalled_downloads()
+
+        assert self._status(container, downloading) is VideoStatus.FAILED
+        assert self._status(container, transcoding) is VideoStatus.TRANSCODING
+
+    def test_transcode_worker_sweeps_only_transcodes(
+        self, container: Container
+    ) -> None:
+        downloading = self._stale(container, transcoding=False)
+        transcoding = self._stale(container, transcoding=True)
+
+        container.fail_stalled_transcodes()
+
+        assert self._status(container, transcoding) is VideoStatus.FAILED
+        assert self._status(container, downloading) is VideoStatus.DOWNLOADING
