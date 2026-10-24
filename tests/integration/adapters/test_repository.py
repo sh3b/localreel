@@ -2,8 +2,10 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid7
 
 import pytest
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
+from localreel.adapters import orm
 from localreel.adapters.repository import PostgresVideoRepository
 from localreel.containers import Container
 from localreel.domain.exceptions import VideoNotFound
@@ -70,6 +72,22 @@ class TestPostgresVideoRepository:
 
         with pytest.raises(VideoNotFound):
             repository.get(uuid7())
+
+    def test_get_refreshes_a_copy_loaded_earlier_in_the_transaction(
+        self, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory()
+        repository.add(video)
+        session.commit()
+        repository.get(video.id)
+        session.execute(
+            update(orm.videos)
+            .where(orm.videos.c.id == video.id)
+            .values(status=VideoStatus.FAILED)
+        )
+
+        assert repository.get(video.id).status is VideoStatus.FAILED
 
     def test_get_by_source_url_hash_returns_the_video(self, session: Session) -> None:
         repository = PostgresVideoRepository(session)

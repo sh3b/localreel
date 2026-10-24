@@ -12,6 +12,9 @@ from localreel.domain.types import VideoSource, VideoStatus
 
 
 class PostgresVideoRepository(AbstractVideoRepository):
+    """Every video it returns is locked (FOR UPDATE) until the transaction ends,
+    so two writers never change the same video from separate reads."""
+
     def __init__(self, session: Session) -> None:
         self._session = session
 
@@ -19,16 +22,21 @@ class PostgresVideoRepository(AbstractVideoRepository):
         self._session.add(video)
 
     def get(self, video_id: UUID) -> Video:
-        # Locked: every caller changes the video, and two writers (a worker's
-        # heartbeat or outcome, a sweep) must not both act on a status that one
-        # of them is about to change.
-        video = self._session.get(Video, video_id, with_for_update=True)
+        # populate_existing: a copy already loaded in this transaction is
+        # refreshed from the locked row, never written back stale.
+        video = self._session.get(
+            Video, video_id, with_for_update=True, populate_existing=True
+        )
         if video is None:
             raise VideoNotFound(f"Video {video_id} not found")
         return video
 
     def get_by_source_url_hash(self, source_url_hash: str) -> Video | None:
-        stmt = select(Video).where(orm.videos.c.source_url_hash == source_url_hash)
+        stmt = (
+            select(Video)
+            .where(orm.videos.c.source_url_hash == source_url_hash)
+            .with_for_update()
+        )
         return self._session.scalars(stmt).first()
 
     def get_next_pending(self) -> Video | None:
