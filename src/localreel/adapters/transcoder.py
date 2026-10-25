@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from uuid import UUID
 
@@ -20,6 +21,17 @@ class FfmpegTranscoder(AbstractTranscoder):
         self._timeout_sec = timeout_sec
 
     def transcode(self, *, video_id: UUID, original_path: str) -> TranscodeResult:
+        # One deadline for the whole job: each ffmpeg/ffprobe call gets the time
+        # left, so four or five calls can't each take the full timeout.
+        deadline = time.monotonic() + self._timeout_sec
+        try:
+            return self._transcode(video_id, original_path, deadline)
+        except subprocess.TimeoutExpired:
+            raise TimeoutError(f"transcode exceeded {self._timeout_sec:g} s") from None
+
+    def _transcode(
+        self, video_id: UUID, original_path: str, deadline: float
+    ) -> TranscodeResult:
         out_dir = self._media_dir / str(video_id)
         # Build into a staging directory and swap it in at the end, so a crash
         # never leaves a truncated mp4 where a serving layer would find it.
@@ -27,15 +39,15 @@ class FfmpegTranscoder(AbstractTranscoder):
         shutil.rmtree(staging, ignore_errors=True)
         staging.mkdir(parents=True)
 
-        self._write_playback(original_path, staging / f"{video_id}.mp4")
+        self._write_playback(original_path, staging / f"{video_id}.mp4", deadline)
         self._write_thumbnail(
-            video_id, original_path, staging / f"{video_id}-thumbnail.jpg"
+            video_id, original_path, staging / f"{video_id}-thumbnail.jpg", deadline
         )
 
         shutil.rmtree(out_dir, ignore_errors=True)
         os.replace(staging, out_dir)
 
-        duration_sec, width, height = self._probe_media(original_path)
+        duration_sec, width, height = self._probe_media(original_path, deadline)
         return TranscodeResult(
             playback_path=f"{video_id}/{video_id}.mp4",
             thumbnail_path=f"{video_id}/{video_id}-thumbnail.jpg",
@@ -44,7 +56,9 @@ class FfmpegTranscoder(AbstractTranscoder):
             height=height,
         )
 
-    def _probe_media(self, path: str) -> tuple[int | None, int | None, int | None]:
+    def _probe_media(
+        self, path: str, deadline: float
+    ) -> tuple[int | None, int | None, int | None]:
         """Read from the file, not yt-dlp, so LOCAL uploads work the same."""
         result = self._run(
             [
@@ -58,7 +72,8 @@ class FfmpegTranscoder(AbstractTranscoder):
                 "-of",
                 "json",
                 path,
-            ]
+            ],
+            deadline,
         )
         probed = json.loads(result.stdout)
         stream = (probed.get("streams") or [{}])[0]
@@ -70,9 +85,11 @@ class FfmpegTranscoder(AbstractTranscoder):
             stream.get("height"),
         )
 
-    def _write_playback(self, original_path: str, destination: Path) -> None:
-        video_codec = self._probe_codec(original_path, "v:0")
-        audio_codec = self._probe_codec(original_path, "a:0")
+    def _write_playback(
+        self, original_path: str, destination: Path, deadline: float
+    ) -> None:
+        video_codec = self._probe_codec(original_path, "v:0", deadline)
+        audio_codec = self._probe_codec(original_path, "a:0", deadline)
 
         if video_codec == BROWSER_SAFE_VIDEO and audio_codec in (
             BROWSER_SAFE_AUDIO,
@@ -111,11 +128,12 @@ class FfmpegTranscoder(AbstractTranscoder):
                 "-movflags",
                 "+faststart",
                 str(destination),
-            ]
+            ],
+            deadline,
         )
 
     def _write_thumbnail(
-        self, video_id: UUID, original_path: str, destination: Path
+        self, video_id: UUID, original_path: str, destination: Path, deadline: float
     ) -> None:
         # The downloader archives the source image beside the mezzanine for
         # remote videos. LOCAL uploads have none, so fall back to a frame.
@@ -138,10 +156,11 @@ class FfmpegTranscoder(AbstractTranscoder):
                 "-frames:v",
                 "1",
                 str(destination),
-            ]
+            ],
+            deadline,
         )
 
-    def _probe_codec(self, path: str, stream: str) -> str | None:
+    def _probe_codec(self, path: str, stream: str, deadline: float) -> str | None:
         result = self._run(
             [
                 "ffprobe",
@@ -154,15 +173,17 @@ class FfmpegTranscoder(AbstractTranscoder):
                 "-of",
                 "csv=p=0",
                 path,
-            ]
+            ],
+            deadline,
         )
         return result.stdout.strip() or None
 
-    def _run(self, args: list[str]) -> subprocess.CompletedProcess[str]:
+    @staticmethod
+    def _run(args: list[str], deadline: float) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             args,
             check=True,
             capture_output=True,
             text=True,
-            timeout=self._timeout_sec,
+            timeout=max(deadline - time.monotonic(), 0),
         )

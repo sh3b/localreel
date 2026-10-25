@@ -28,7 +28,7 @@ class TestSourceThumbnailHandoff:
         downloads_dir = tmp_path / "downloads"
         downloads_dir.mkdir()
         video_id = uuid7()
-        options = YtDlpDownloader(str(downloads_dir))._options(video_id)
+        options = YtDlpDownloader(str(downloads_dir), TIMEOUT_SEC)._options(video_id)
 
         assert options["postprocessors"][0]["format"] == "jpg"
         mezzanine = Path(options["outtmpl"]["default"] % {"ext": "mp4"})

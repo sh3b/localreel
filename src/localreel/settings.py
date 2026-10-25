@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     downloads_dir: str
     download_poll_interval_sec: float
+    download_timeout_sec: float
 
     media_dir: str
     transcode_poll_interval_sec: float

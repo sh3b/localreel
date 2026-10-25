@@ -8,6 +8,7 @@ from localreel.adapters.downloader import YtDlpDownloader
 from localreel.domain.value_objects.source_metadata import SourceMetadata
 
 VIDEO_ID = UUID("0198f0a0-0000-7000-8000-000000000001")
+TIMEOUT_SEC = 60.0
 
 INFO: dict[str, Any] = {
     "id": "aBcDeFgHiJk",
@@ -29,7 +30,9 @@ INFO: dict[str, Any] = {
 
 class TestSourceMetadataMapping:
     def _metadata(self, **overrides: Any) -> SourceMetadata:
-        return YtDlpDownloader("/downloads")._source_metadata({**INFO, **overrides})
+        return YtDlpDownloader("/downloads", TIMEOUT_SEC)._source_metadata(
+            {**INFO, **overrides}
+        )
 
     def test_maps_the_portable_fields(self) -> None:
         metadata = self._metadata()
@@ -71,7 +74,7 @@ class TestSourceMetadataMapping:
 
 class TestYtDlpDownloaderOptions:
     def _options(self) -> dict[str, Any]:
-        return YtDlpDownloader("/downloads")._options(VIDEO_ID)
+        return YtDlpDownloader("/downloads", TIMEOUT_SEC)._options(VIDEO_ID)
 
     def test_requests_best_video_and_audio_merged(self) -> None:
         assert self._options()["format"] == "bestvideo*+bestaudio/best"
