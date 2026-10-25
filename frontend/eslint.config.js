@@ -38,7 +38,7 @@ export default defineConfig(
 	},
 	{
 		// A promise nobody awaits or catches fails silently (the Add page's stuck
-		// "sending…"). The same rules a large Svelte app (Immich) enforces.
+		// "sending…"), so every promise must be awaited, returned or caught.
 		files: ['**/*.ts', '**/*.svelte'],
 		rules: {
 			'@typescript-eslint/no-floating-promises': 'error',
@@ -47,7 +47,6 @@ export default defineConfig(
 			'@typescript-eslint/require-await': 'error'
 		}
 	},
-	// The layer rules in docs/frontend-patterns.md that a linter can check.
 	{
 		// Server calls belong in state classes (lib/**/*.svelte.ts); pages and
 		// components import only the API's types.
