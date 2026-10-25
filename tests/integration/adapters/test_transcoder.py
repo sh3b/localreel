@@ -198,3 +198,17 @@ class TestFfmpegTranscoder:
             FfmpegTranscoder(str(media_dir), TIMEOUT_SEC).transcode(
                 video_id=uuid7(), original_path=str(broken)
             )
+
+    def test_a_transcode_past_its_deadline_raises_timeout(
+        self, tmp_path: Path, media_dir: Path
+    ) -> None:
+        source = _make_source(
+            tmp_path / "src.mp4",
+            video=["-c:v", "libx264", "-pix_fmt", "yuv420p"],
+            audio=["-c:a", "aac"],
+        )
+
+        with pytest.raises(TimeoutError, match="transcode exceeded 0 s"):
+            FfmpegTranscoder(str(media_dir), 0.0).transcode(
+                video_id=uuid7(), original_path=str(source)
+            )

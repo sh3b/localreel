@@ -49,7 +49,9 @@ class Container(containers.DeclarativeContainer):
     uow = providers.Singleton(PostgresUnitOfWork, session_factory=session_factory)
 
     downloader = providers.Singleton(
-        YtDlpDownloader, downloads_dir=settings.provided.downloads_dir
+        YtDlpDownloader,
+        downloads_dir=settings.provided.downloads_dir,
+        timeout_sec=settings.provided.download_timeout_sec,
     )
 
     transcoder = providers.Singleton(
