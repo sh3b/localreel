@@ -1,3 +1,4 @@
+import logging
 import multiprocessing
 import os
 import signal
@@ -26,6 +27,8 @@ BULK_KEYS = frozenset(
 )
 
 
+logger = logging.getLogger(__name__)
+
 # Spawn, not fork: the worker has a database pool and threads a forked child
 # would inherit.
 _PROCESSES = multiprocessing.get_context("spawn")
@@ -47,52 +50,51 @@ class YtDlpDownloader(AbstractDownloader):
         child = _PROCESSES.Process(
             target=self._download_in_child, args=(url, video_id, sender)
         )
-        child.start()
-        sender.close()
         try:
+            child.start()
+            sender.close()
             if not receiver.poll(self._timeout_sec):
                 raise TimeoutError(f"download exceeded {self._timeout_sec:g} s")
             outcome: DownloadResult | str = receiver.recv()
         except EOFError:
-            # The child died without a word (OOM kill, crash); its ffmpeg may not.
-            self._kill(child)
+            # The child died without sending anything (OOM kill, crash).
+            child.join()
             raise RuntimeError(
                 f"download process exited with code {child.exitcode}"
             ) from None
-        except BaseException:
-            # Also on SIGTERM and Ctrl-C, which the child, in its own process
-            # group, doesn't receive.
-            self._kill(child)
-            raise
         finally:
+            # On every way out, SIGTERM and Ctrl-C included: the child, in its
+            # own process group, receives neither.
+            sender.close()
             receiver.close()
-        child.join()
+            self._kill(child)
         if isinstance(outcome, str):
             raise RuntimeError(outcome)
         return outcome
 
     def _download_in_child(self, url: str, video_id: UUID, sender: Connection) -> None:
-        # Its own process group, so the ffmpeg yt-dlp spawns dies with it.
+        # Its own process group, so the ffmpeg yt-dlp spawns can be killed with it.
         os.setpgrp()
         try:
             sender.send(self._download(url, video_id))
         except Exception as exc:
-            # yt-dlp's errors don't all pickle; the message is what's kept.
+            # yt-dlp's errors don't all pickle, so only the message crosses over;
+            # the traceback is logged here.
+            logger.exception("yt-dlp failed for video %s", video_id)
             sender.send(str(exc))
 
     @staticmethod
     def _kill(child: BaseProcess) -> None:
-        # is_alive() also reaps a child that has exited: macOS refuses killpg
-        # on a group whose leader is an unreaped zombie.
-        alive = child.is_alive()
-        if child.pid is not None:
-            try:
-                os.killpg(child.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                # Nothing left in the group, or killed before it made one.
-                if alive:
-                    child.kill()
+        if child.pid is None:
+            return  # interrupted before it started
+        # Leader first: macOS refuses killpg while the leader is an unreaped zombie.
+        child.kill()
         child.join()
+        try:
+            # The group outlives its leader while the ffmpeg it started runs.
+            os.killpg(child.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
 
     def _download(self, url: str, video_id: UUID) -> DownloadResult:
         with YoutubeDL(self._options(video_id)) as ydl:

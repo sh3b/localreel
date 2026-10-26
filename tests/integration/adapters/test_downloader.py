@@ -1,7 +1,9 @@
 """The child process around yt-dlp, with its download replaced by stand-ins."""
 
 import os
+import signal
 import subprocess
+import threading
 import time
 from pathlib import Path
 from uuid import UUID, uuid7
@@ -63,6 +65,17 @@ def _is_running(pid: int) -> bool:
     return True
 
 
+def _assert_merge_killed(downloads_dir: Path) -> None:
+    pid_file = downloads_dir / "merge.pid"
+    assert pid_file.exists(), "the child never started its merge"
+    merge_pid = int(pid_file.read_text())
+    # The orphaned merge is reaped by init, not instantly.
+    give_up = time.monotonic() + 5
+    while _is_running(merge_pid) and time.monotonic() < give_up:
+        time.sleep(0.05)
+    assert not _is_running(merge_pid)
+
+
 class TestYtDlpDownloaderProcess:
     def test_returns_what_the_child_downloaded(self, tmp_path: Path) -> None:
         downloader = _Finishes(str(tmp_path), TIMEOUT_SEC)
@@ -84,14 +97,21 @@ class TestYtDlpDownloaderProcess:
     def test_a_download_past_its_deadline_is_killed_with_its_merge(
         self, tmp_path: Path
     ) -> None:
-        downloader = _HangsInMerge(str(tmp_path), 3.0)
+        downloader = _HangsInMerge(str(tmp_path), 5.0)
 
-        with pytest.raises(TimeoutError, match="download exceeded 3 s"):
+        with pytest.raises(TimeoutError, match="download exceeded 5 s"):
             downloader.download(url=URL, video_id=uuid7())
 
-        merge_pid = int((tmp_path / "merge.pid").read_text())
-        # The orphaned merge is reaped by init, not instantly.
-        give_up = time.monotonic() + 5
-        while _is_running(merge_pid) and time.monotonic() < give_up:
-            time.sleep(0.05)
-        assert not _is_running(merge_pid)
+        _assert_merge_killed(tmp_path)
+
+    def test_ctrl_c_mid_download_kills_the_child_and_its_merge(
+        self, tmp_path: Path
+    ) -> None:
+        downloader = _HangsInMerge(str(tmp_path), TIMEOUT_SEC)
+        ctrl_c = threading.Timer(5.0, os.kill, (os.getpid(), signal.SIGINT))
+        ctrl_c.start()
+
+        with pytest.raises(KeyboardInterrupt):
+            downloader.download(url=URL, video_id=uuid7())
+
+        _assert_merge_killed(tmp_path)

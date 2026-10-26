@@ -5,6 +5,9 @@ name: localreel
 x-app: &app
   build: .
   restart: unless-stopped
+  # The app runs as PID 1, which never reaps processes it didn't start, such
+  # as the ffmpeg a killed download leaves; an init process does.
+  init: true
   # Match the owner of bind-mounted *_PATH dirs. Not on db/nginx: they drop
   # privileges themselves.
   user: "${PUID:-1000}:${PGID:-1000}"
