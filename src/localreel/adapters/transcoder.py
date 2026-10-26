@@ -32,6 +32,10 @@ class FfmpegTranscoder(AbstractTranscoder):
     def _transcode(
         self, video_id: UUID, original_path: str, deadline: float
     ) -> TranscodeResult:
+        # Before the encode: the source is all it reads, and a probe after the
+        # swap could time out on a video already in place.
+        duration_sec, width, height = self._probe_media(original_path, deadline)
+
         out_dir = self._media_dir / str(video_id)
         # Build into a staging directory and swap it in at the end, so a crash
         # never leaves a truncated mp4 where a serving layer would find it.
@@ -47,7 +51,6 @@ class FfmpegTranscoder(AbstractTranscoder):
         shutil.rmtree(out_dir, ignore_errors=True)
         os.replace(staging, out_dir)
 
-        duration_sec, width, height = self._probe_media(original_path, deadline)
         return TranscodeResult(
             playback_path=f"{video_id}/{video_id}.mp4",
             thumbnail_path=f"{video_id}/{video_id}-thumbnail.jpg",
