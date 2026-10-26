@@ -78,7 +78,7 @@ class TestDownloadNextPending:
             assert loaded.error_message == "boom"
 
     @pytest.mark.parametrize("interruption", [SystemExit(143), KeyboardInterrupt()])
-    def test_interrupted_download_marks_failed_and_propagates(
+    def test_interrupted_download_releases_the_video_and_propagates(
         self, container: Container, interruption: BaseException
     ) -> None:
         uow = container.uow()
@@ -93,9 +93,7 @@ class TestDownloadNextPending:
             )
 
         with uow:
-            loaded = uow.videos.get(video_id)
-            assert loaded.status is VideoStatus.FAILED
-            assert loaded.error_message == "worker shut down"
+            assert uow.videos.get(video_id).status is VideoStatus.PENDING
 
     def test_returns_false_when_nothing_pending(self, container: Container) -> None:
         uow = container.uow()

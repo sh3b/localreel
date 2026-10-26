@@ -11,6 +11,7 @@ from localreel.domain.commands import (
     MarkDownloaded,
     MarkFailed,
     MarkReady,
+    ReleaseVideo,
     RetryVideo,
     SubmitURL,
 )
@@ -26,6 +27,7 @@ from localreel.service_layer.handlers.commands import (
     MarkDownloadedHandler,
     MarkFailedHandler,
     MarkReadyHandler,
+    ReleaseVideoHandler,
     SubmitURLHandler,
 )
 from tests.factories.video import VideoFactory
@@ -278,3 +280,53 @@ class TestRetryVideo:
             loaded = uow.videos.get(video_id)
             assert loaded.status is VideoStatus.PENDING
             assert loaded.error_message is None
+
+
+class TestReleaseVideo:
+    def test_a_download_goes_back_to_pending(self, container: Container) -> None:
+        uow = container.uow()
+        with uow:
+            video = VideoFactory()
+            video.mark_downloading()
+            uow.videos.add(video)
+            video_id = video.id
+
+        with uow:
+            container.message_bus().handle(ReleaseVideo(video_id=video_id))
+
+        with uow:
+            assert uow.videos.get(video_id).status is VideoStatus.PENDING
+
+    def test_a_transcode_goes_back_to_downloaded_with_its_file(
+        self, container: Container
+    ) -> None:
+        uow = container.uow()
+        with uow:
+            video = VideoFactory()
+            video.mark_downloading()
+            video.mark_downloaded("x.webm")
+            video.mark_transcoding()
+            uow.videos.add(video)
+            video_id = video.id
+
+        with uow:
+            container.message_bus().handle(ReleaseVideo(video_id=video_id))
+
+        with uow:
+            loaded = uow.videos.get(video_id)
+            assert loaded.status is VideoStatus.DOWNLOADED
+            assert loaded.original_path == "x.webm"
+
+    def test_returns_no_events(self, container: Container) -> None:
+        uow = container.uow()
+        handler = ReleaseVideoHandler(uow)
+        with uow:
+            video = VideoFactory()
+            video.mark_downloading()
+            uow.videos.add(video)
+            video_id = video.id
+
+        with uow:
+            events = handler(ReleaseVideo(video_id=video_id))
+
+        assert events == []

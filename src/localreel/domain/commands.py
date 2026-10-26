@@ -37,5 +37,10 @@ class MarkFailed(Command):
 
 
 @dataclass
+class ReleaseVideo(Command):
+    video_id: UUID
+
+
+@dataclass
 class RetryVideo(Command):
     video_id: UUID

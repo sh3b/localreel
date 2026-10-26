@@ -3,7 +3,7 @@ from uuid import UUID
 
 from localreel.domain.abstractions.downloader import AbstractDownloader
 from localreel.domain.abstractions.unit_of_work import AbstractUnitOfWork
-from localreel.domain.commands import MarkDownloaded, MarkFailed
+from localreel.domain.commands import MarkDownloaded, MarkFailed, ReleaseVideo
 from localreel.service_layer.message_bus import MessageBus
 
 logger = logging.getLogger(__name__)
@@ -22,8 +22,8 @@ def download_next_pending(
     command handler.
 
     If the process is told to stop mid-download (SIGTERM becomes `SystemExit`,
-    Ctrl-C is `KeyboardInterrupt`), the video is marked failed before the
-    interruption propagates, so it is not stranded in `DOWNLOADING`.
+    Ctrl-C is `KeyboardInterrupt`), the video is released back to `PENDING` for
+    the next worker before the interruption propagates.
     """
     claimed = _claim_next(uow)
     if claimed is None:
@@ -33,7 +33,7 @@ def download_next_pending(
         outcome: MarkDownloaded | MarkFailed = _download(downloader, video_id, url)
     except SystemExit, KeyboardInterrupt:
         with uow:
-            message_bus.handle(MarkFailed(video_id=video_id, reason="worker shut down"))
+            message_bus.handle(ReleaseVideo(video_id=video_id))
         raise
     with uow:
         message_bus.handle(outcome)
