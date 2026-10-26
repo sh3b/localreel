@@ -35,7 +35,7 @@ _PROCESSES = multiprocessing.get_context("spawn")
 
 
 class YtDlpDownloader(AbstractDownloader):
-    def __init__(self, downloads_dir: str, timeout_sec: float) -> None:
+    def __init__(self, downloads_dir: str, timeout_sec: int) -> None:
         self._downloads_dir = downloads_dir
         self._timeout_sec = timeout_sec
 

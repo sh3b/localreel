@@ -19,7 +19,7 @@ pytestmark = pytest.mark.skipif(
     reason="needs ffmpeg and ffprobe on PATH",
 )
 
-TIMEOUT_SEC = 60.0
+TIMEOUT_SEC = 60
 ARCHIVED_IMAGE = b"not really a jpeg"
 
 

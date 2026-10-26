@@ -16,7 +16,7 @@ BROWSER_SAFE_AUDIO = "aac"
 
 
 class FfmpegTranscoder(AbstractTranscoder):
-    def __init__(self, media_dir: str, timeout_sec: float) -> None:
+    def __init__(self, media_dir: str, timeout_sec: int) -> None:
         self._media_dir = Path(media_dir)
         self._timeout_sec = timeout_sec
 

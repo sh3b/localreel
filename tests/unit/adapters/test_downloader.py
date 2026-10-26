@@ -8,7 +8,7 @@ from localreel.adapters.downloader import YtDlpDownloader
 from localreel.domain.value_objects.source_metadata import SourceMetadata
 
 VIDEO_ID = UUID("0198f0a0-0000-7000-8000-000000000001")
-TIMEOUT_SEC = 60.0
+TIMEOUT_SEC = 60
 
 INFO: dict[str, Any] = {
     "id": "aBcDeFgHiJk",
