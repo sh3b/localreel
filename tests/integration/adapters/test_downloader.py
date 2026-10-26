@@ -15,7 +15,7 @@ from localreel.domain.abstractions.downloader import DownloadResult
 from localreel.domain.value_objects.source_metadata import SourceMetadata
 
 URL = "https://www.youtube.com/watch?v=aBcDeFgHiJk"
-TIMEOUT_SEC = 30.0
+TIMEOUT_SEC = 30
 
 RESULT = DownloadResult(
     original_path="x.mp4",
@@ -97,7 +97,7 @@ class TestYtDlpDownloaderProcess:
     def test_a_download_past_its_deadline_is_killed_with_its_merge(
         self, tmp_path: Path
     ) -> None:
-        downloader = _HangsInMerge(str(tmp_path), 5.0)
+        downloader = _HangsInMerge(str(tmp_path), 5)
 
         with pytest.raises(TimeoutError, match="download exceeded 5 s"):
             downloader.download(url=URL, video_id=uuid7())

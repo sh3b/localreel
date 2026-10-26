@@ -8,7 +8,7 @@ import pytest
 
 from localreel.adapters.transcoder import FfmpegTranscoder
 
-TIMEOUT_SEC = 60.0
+TIMEOUT_SEC = 60
 PROBED = '{"streams": [{"width": 64, "height": 64}], "format": {"duration": "1"}}'
 
 

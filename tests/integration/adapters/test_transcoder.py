@@ -12,7 +12,7 @@ pytestmark = pytest.mark.skipif(
     reason="needs ffmpeg and ffprobe on PATH",
 )
 
-TIMEOUT_SEC = 60.0
+TIMEOUT_SEC = 60
 
 
 def _codec(path: Path, stream: str) -> str:
@@ -209,6 +209,6 @@ class TestFfmpegTranscoder:
         )
 
         with pytest.raises(TimeoutError, match="transcode exceeded 0 s"):
-            FfmpegTranscoder(str(media_dir), 0.0).transcode(
+            FfmpegTranscoder(str(media_dir), 0).transcode(
                 video_id=uuid7(), original_path=str(source)
             )
