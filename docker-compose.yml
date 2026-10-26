@@ -73,12 +73,17 @@ services:
   download-worker:
     <<: *app
     command: python -m localreel.entrypoints.download_worker.main
+    # On stop the worker kills the download and releases the video, which
+    # takes under a second; the rest is margin for a slow database.
+    stop_grace_period: 15s
     volumes:
       - ${DOWNLOADS_PATH:?set DOWNLOADS_PATH in .env}:/app/data/downloads
 
   transcode-worker:
     <<: *app
     command: python -m localreel.entrypoints.transcode_worker.main
+    # As for download-worker: kill ffmpeg, release the video, exit.
+    stop_grace_period: 15s
     volumes:
       # Reads the mezzanine and archived thumbnail, writes the derived tree.
       - ${DOWNLOADS_PATH:?set DOWNLOADS_PATH in .env}:/app/data/downloads

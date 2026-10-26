@@ -141,6 +141,51 @@ class TestStatusTransitions:
         assert VideoStatus.PENDING in Video.VALID_TRANSITIONS[VideoStatus.FAILED]
 
 
+class TestRelease:
+    def test_a_download_goes_back_to_pending(self):
+        video = VideoFactory()
+        video.mark_downloading()
+
+        video.release()
+
+        assert video.status is VideoStatus.PENDING
+
+    def test_a_transcode_goes_back_to_downloaded_with_its_file(self):
+        video = VideoFactory()
+        video.mark_downloading()
+        video.mark_downloaded("x.webm")
+        video.mark_transcoding()
+        video.collect_events()
+
+        video.release()
+
+        assert video.status is VideoStatus.DOWNLOADED
+        assert video.original_path == "x.webm"
+        assert video.events == []
+
+    def test_a_video_nobody_claimed_cannot_be_released(self):
+        with pytest.raises(InvalidStatusTransition):
+            VideoFactory().release()
+
+    def test_a_failed_video_cannot_be_released(self):
+        video = VideoFactory()
+        video.mark_downloading()
+        video.mark_failed("HTTP 403")
+
+        with pytest.raises(InvalidStatusTransition):
+            video.release()
+
+    def test_a_ready_video_cannot_be_released(self):
+        video = VideoFactory()
+        video.mark_downloading()
+        video.mark_downloaded("x.webm")
+        video.mark_transcoding()
+        video.mark_ready("x.mp4", "x.jpg")
+
+        with pytest.raises(InvalidStatusTransition):
+            video.release()
+
+
 class TestRetry:
     def test_failed_video_goes_back_to_pending_without_its_error(self):
         video = VideoFactory()

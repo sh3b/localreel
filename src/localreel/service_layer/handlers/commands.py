@@ -7,6 +7,7 @@ from localreel.domain.commands import (
     MarkDownloaded,
     MarkFailed,
     MarkReady,
+    ReleaseVideo,
     RetryVideo,
     SubmitURL,
 )
@@ -75,6 +76,16 @@ class MarkFailedHandler:
     def __call__(self, cmd: MarkFailed) -> list[Event]:
         video = self._uow.videos.get(cmd.video_id)
         video.mark_failed(cmd.reason)
+        return video.collect_events()
+
+
+class ReleaseVideoHandler:
+    def __init__(self, uow: AbstractUnitOfWork) -> None:
+        self._uow = uow
+
+    def __call__(self, cmd: ReleaseVideo) -> list[Event]:
+        video = self._uow.videos.get(cmd.video_id)
+        video.release()
         return video.collect_events()
 
 

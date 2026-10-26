@@ -4,7 +4,7 @@ from uuid import UUID
 
 from localreel.domain.abstractions.transcoder import AbstractTranscoder
 from localreel.domain.abstractions.unit_of_work import AbstractUnitOfWork
-from localreel.domain.commands import MarkFailed, MarkReady
+from localreel.domain.commands import MarkFailed, MarkReady, ReleaseVideo
 from localreel.service_layer.message_bus import MessageBus
 
 logger = logging.getLogger(__name__)
@@ -23,8 +23,8 @@ def transcode_next_downloaded(
     holding no row lock and no connection of its own.
 
     If the process is told to stop mid-transcode (SIGTERM becomes `SystemExit`,
-    Ctrl-C is `KeyboardInterrupt`), the video is marked failed before the
-    interruption propagates, so it is not stranded in `TRANSCODING`.
+    Ctrl-C is `KeyboardInterrupt`), the video is released back to `DOWNLOADED` for
+    the next worker before the interruption propagates.
     """
     claimed = _claim_next(uow)
     if claimed is None:
@@ -37,7 +37,7 @@ def transcode_next_downloaded(
         )
     except SystemExit, KeyboardInterrupt:
         with uow:
-            message_bus.handle(MarkFailed(video_id=video_id, reason="worker shut down"))
+            message_bus.handle(ReleaseVideo(video_id=video_id))
         raise
     with uow:
         message_bus.handle(outcome)

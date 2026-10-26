@@ -34,6 +34,14 @@ class Video:
         VideoStatus.FAILED: frozenset({VideoStatus.PENDING}),  # retry
     }
 
+    # Where release() hands a claimed video back to. Kept out of
+    # VALID_TRANSITIONS, where DOWNLOADING -> PENDING would also let retry()
+    # run mid-download, and TRANSCODING -> DOWNLOADED a late mark_downloaded().
+    RELEASED_TO: ClassVar[dict[VideoStatus, VideoStatus]] = {
+        VideoStatus.DOWNLOADING: VideoStatus.PENDING,
+        VideoStatus.TRANSCODING: VideoStatus.DOWNLOADED,
+    }
+
     def __init__(
         self,
         *,
@@ -199,6 +207,17 @@ class Video:
         self._transition(VideoStatus.FAILED)
         self.error_message = reason
         self.events.append(VideoFailed(video_id=self.id, reason=reason))
+
+    def release(self) -> None:
+        # A worker that stops mid-job hands the video back to the step it was
+        # claimed from, for the next worker to pick up. Nothing happened to the
+        # video, so there is no event.
+        if self.status not in self.RELEASED_TO:
+            raise InvalidStatusTransition(
+                f"Only a claimed video can be released, not {self.status} "
+                f"video {self.id}"
+            )
+        self.status = self.RELEASED_TO[self.status]
 
     def retry(self) -> None:
         # Back to the start of the pipeline; the download worker claims it again.

@@ -9,6 +9,7 @@ from localreel.domain.commands import (
     MarkDownloaded,
     MarkFailed,
     MarkReady,
+    ReleaseVideo,
     RetryVideo,
     SubmitURL,
 )
@@ -26,6 +27,7 @@ from localreel.service_layer.handlers.commands import (
     MarkDownloadedHandler,
     MarkFailedHandler,
     MarkReadyHandler,
+    ReleaseVideoHandler,
     RetryVideoHandler,
     SubmitURLHandler,
 )
@@ -68,6 +70,7 @@ class Container(containers.DeclarativeContainer):
                 MarkDownloaded: providers.Singleton(MarkDownloadedHandler, uow),
                 MarkReady: providers.Singleton(MarkReadyHandler, uow),
                 MarkFailed: providers.Singleton(MarkFailedHandler, uow),
+                ReleaseVideo: providers.Singleton(ReleaseVideoHandler, uow),
                 RetryVideo: providers.Singleton(RetryVideoHandler, uow),
             }
         ),
