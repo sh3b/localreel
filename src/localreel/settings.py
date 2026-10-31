@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import PositiveFloat
 from pydantic_settings import BaseSettings
 from sqlalchemy import URL
 
@@ -12,7 +13,7 @@ class Settings(BaseSettings):
     db_name: str
 
     downloads_dir: Path = Path("data/downloads")
-    worker_poll_interval_sec: float = 5
+    worker_poll_interval_sec: PositiveFloat = 5
 
     @property
     def db_url(self) -> URL:
