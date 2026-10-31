@@ -83,6 +83,11 @@ class Video:
             return
         self._transition(VideoStatus.DOWNLOADING, VideoStatus.PENDING)
 
+    def retry(self) -> None:
+        self._transition(VideoStatus.FAILED, VideoStatus.PENDING)
+        self.attempts = 0
+        self.error = None
+
     def collect_events(self) -> list[Event]:
         # Empty the list on handover: the unit of work collects after every
         # handler, and the video stays tracked, so the next collection would

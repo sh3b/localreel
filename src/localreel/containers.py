@@ -8,6 +8,7 @@ from localreel.domain.commands import (
     MarkFailed,
     MarkReady,
     ResetDownload,
+    RetryVideo,
     StartDownload,
     SubmitURL,
 )
@@ -17,6 +18,7 @@ from localreel.service_layer.handlers.commands import (
     MarkFailedHandler,
     MarkReadyHandler,
     ResetDownloadHandler,
+    RetryVideoHandler,
     StartDownloadHandler,
     SubmitURLHandler,
 )
@@ -54,6 +56,7 @@ class Container(containers.DeclarativeContainer):
                 ResetDownload: providers.Factory(ResetDownloadHandler, uow=uow),
                 MarkReady: providers.Factory(MarkReadyHandler, uow=uow),
                 MarkFailed: providers.Factory(MarkFailedHandler, uow=uow),
+                RetryVideo: providers.Factory(RetryVideoHandler, uow=uow),
             }
         ),
         event_handlers=providers.Dict(

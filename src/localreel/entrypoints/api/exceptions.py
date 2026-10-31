@@ -1,10 +1,18 @@
 from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 
-from localreel.domain.exceptions import DomainError, DuplicateVideo, UnsupportedSource
+from localreel.domain.exceptions import (
+    DomainError,
+    DuplicateVideo,
+    InvalidStatusTransition,
+    UnsupportedSource,
+    VideoNotFound,
+)
 
 STATUS_BY_EXCEPTION: dict[type[DomainError], int] = {
     UnsupportedSource: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    VideoNotFound: status.HTTP_404_NOT_FOUND,
+    InvalidStatusTransition: status.HTTP_409_CONFLICT,
 }
 
 

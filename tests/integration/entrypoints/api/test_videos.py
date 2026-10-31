@@ -1,3 +1,5 @@
+from uuid import uuid7
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -53,6 +55,48 @@ class TestSubmitURL:
             "detail": "Unsupported video source: https://vimeo.com/12345"
         }
         assert session.scalars(select(VideoORM)).all() == []
+
+
+class TestRetryVideo:
+    def test_returns_202_and_puts_a_failed_video_back_to_pending(
+        self, client: TestClient, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory.build()
+        repository.add(video)
+        video.start_download()
+        video.mark_failed("Video unavailable")
+        repository.save(video)
+        session.commit()
+
+        response = client.post(f"/videos/{video.id}/retry")
+
+        assert response.status_code == 202
+        session.expire_all()
+        assert session.get_one(VideoORM, video.id).status is VideoStatus.PENDING
+
+    def test_an_unknown_video_returns_404(self, client: TestClient) -> None:
+        video_id = uuid7()
+
+        response = client.post(f"/videos/{video_id}/retry")
+
+        assert response.status_code == 404
+        assert response.json() == {"detail": f"Video {video_id} not found"}
+
+    def test_a_video_that_has_not_failed_returns_409(
+        self, client: TestClient, session: Session
+    ) -> None:
+        video = VideoFactory.build()
+        PostgresVideoRepository(session).add(video)
+        session.commit()
+
+        response = client.post(f"/videos/{video.id}/retry")
+
+        assert response.status_code == 409
+        assert response.json() == {
+            "detail": f"Video {video.id} is PENDING, expected FAILED; "
+            "cannot become PENDING"
+        }
 
 
 class TestListVideos:

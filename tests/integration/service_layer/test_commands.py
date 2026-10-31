@@ -11,6 +11,7 @@ from localreel.domain.commands import (
     MarkFailed,
     MarkReady,
     ResetDownload,
+    RetryVideo,
     StartDownload,
     SubmitURL,
 )
@@ -131,6 +132,23 @@ class TestDownloadCommands:
         row = session.get_one(VideoORM, video_id)
         assert row.status is VideoStatus.FAILED
         assert row.error == "Video unavailable"
+
+    def test_retry_video_puts_a_failed_video_back_to_pending(
+        self, container: Container, session: Session
+    ) -> None:
+        video_id = self._downloading_video(container)
+        with container.uow():
+            container.message_bus().handle(
+                MarkFailed(video_id=video_id, reason="Video unavailable")
+            )
+
+        with container.uow():
+            container.message_bus().handle(RetryVideo(video_id=video_id))
+
+        row = session.get_one(VideoORM, video_id)
+        assert row.status is VideoStatus.PENDING
+        assert row.attempts == 0
+        assert row.error is None
 
     def test_handled_events_are_not_left_on_the_video(
         self, container: Container

@@ -5,6 +5,7 @@ from localreel.domain.commands import (
     MarkFailed,
     MarkReady,
     ResetDownload,
+    RetryVideo,
     StartDownload,
     SubmitURL,
 )
@@ -78,3 +79,12 @@ class MarkFailedHandler:
     def __call__(self, cmd: MarkFailed) -> None:
         video = self._uow.videos.get(cmd.video_id, lock=True)
         video.mark_failed(cmd.reason)
+
+
+class RetryVideoHandler:
+    def __init__(self, uow: AbstractUnitOfWork) -> None:
+        self._uow = uow
+
+    def __call__(self, cmd: RetryVideo) -> None:
+        video = self._uow.videos.get(cmd.video_id, lock=True)
+        video.retry()

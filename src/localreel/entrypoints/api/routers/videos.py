@@ -5,7 +5,7 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Query, status
 
 from localreel.containers import Container
-from localreel.domain.commands import SubmitURL
+from localreel.domain.commands import RetryVideo, SubmitURL
 from localreel.domain.unit_of_work import AbstractUnitOfWork
 from localreel.entrypoints.api.schemas.videos import SubmitURLRequest
 from localreel.service_layer.message_bus import MessageBus
@@ -24,6 +24,17 @@ def submit_url(
 ) -> None:
     with uow:
         bus.handle(SubmitURL(url=body.url))
+
+
+@router.post("/videos/{video_id}/retry", status_code=status.HTTP_202_ACCEPTED)
+@inject
+def retry_video(
+    video_id: UUID,
+    uow: Annotated[AbstractUnitOfWork, Depends(Provide[Container.uow])],
+    bus: Annotated[MessageBus, Depends(Provide[Container.message_bus])],
+) -> None:
+    with uow:
+        bus.handle(RetryVideo(video_id=video_id))
 
 
 @router.get("/videos")

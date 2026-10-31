@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from localreel.adapters.orm import VideoORM
 from localreel.containers import Container
-from localreel.domain.commands import MarkFailed, MarkReady, ResetDownload
+from localreel.domain.commands import MarkFailed, MarkReady, ResetDownload, RetryVideo
 from localreel.domain.exceptions import InvalidStatusTransition
 from localreel.domain.value_objects import VideoStatus
 from tests.factories import SourceMetadataFactory, VideoFactory
@@ -25,45 +25,66 @@ class TestCommandLocking:
             yield container
 
     @pytest.fixture
-    def downloading_video_id(self, engine: Engine) -> Iterator[UUID]:
+    def video_in(self, engine: Engine) -> Iterator[Callable[[VideoStatus], UUID]]:
         video = VideoFactory.build()
-        with Session(engine) as session, session.begin():
-            session.add(
-                VideoORM(
-                    id=video.id,
-                    source=video.source,
-                    source_url=video.source_url,
-                    source_key=video.source_key,
-                    status=VideoStatus.DOWNLOADING,
+
+        def insert(status: VideoStatus) -> UUID:
+            with Session(engine) as session, session.begin():
+                session.add(
+                    VideoORM(
+                        id=video.id,
+                        source=video.source,
+                        source_url=video.source_url,
+                        source_key=video.source_key,
+                        status=status,
+                    )
                 )
-            )
-        yield video.id
+            return video.id
+
+        yield insert
         with Session(engine) as session, session.begin():
             session.execute(delete(VideoORM).where(VideoORM.id == video.id))
 
     @pytest.mark.parametrize(
-        "make_command",
+        ("status", "make_command"),
         [
-            lambda video_id: MarkReady(
-                video_id=video_id,
-                file_path="a.webm",
-                thumbnail_path=None,
-                metadata=SourceMetadataFactory.build(),
+            (
+                VideoStatus.DOWNLOADING,
+                lambda video_id: MarkReady(
+                    video_id=video_id,
+                    file_path="a.webm",
+                    thumbnail_path=None,
+                    metadata=SourceMetadataFactory.build(),
+                ),
             ),
-            lambda video_id: MarkFailed(video_id=video_id, reason="unavailable"),
-            lambda video_id: ResetDownload(video_id=video_id),
+            (
+                VideoStatus.DOWNLOADING,
+                lambda video_id: MarkFailed(video_id=video_id, reason="unavailable"),
+            ),
+            (
+                VideoStatus.DOWNLOADING,
+                lambda video_id: ResetDownload(video_id=video_id),
+            ),
+            (
+                VideoStatus.FAILED,
+                lambda video_id: RetryVideo(video_id=video_id),
+            ),
         ],
-        ids=["MarkReady", "MarkFailed", "ResetDownload"],
+        ids=["MarkReady", "MarkFailed", "ResetDownload", "RetryVideo"],
     )
     def test_reads_the_status_a_concurrent_change_left_and_refuses(
         self,
         committing_container: Container,
-        downloading_video_id: UUID,
+        video_in: Callable[[VideoStatus], UUID],
         engine: Engine,
-        make_command: Callable[[UUID], MarkReady | MarkFailed | ResetDownload],
+        status: VideoStatus,
+        make_command: Callable[
+            [UUID], MarkReady | MarkFailed | ResetDownload | RetryVideo
+        ],
     ) -> None:
         container = committing_container
-        command = make_command(downloading_video_id)
+        video_id = video_in(status)
+        command = make_command(video_id)
         errors: list[Exception] = []
 
         def send() -> None:
@@ -74,7 +95,7 @@ class TestCommandLocking:
                 errors.append(exc)
 
         with Session(engine) as other, other.begin():
-            row = other.get_one(VideoORM, downloading_video_id, with_for_update=True)
+            row = other.get_one(VideoORM, video_id, with_for_update=True)
             sender = threading.Thread(target=send)
             sender.start()
             sender.join(timeout=0.5)
@@ -85,7 +106,4 @@ class TestCommandLocking:
         assert len(errors) == 1
         assert isinstance(errors[0], InvalidStatusTransition)
         with Session(engine) as session:
-            assert (
-                session.get_one(VideoORM, downloading_video_id).status
-                is VideoStatus.PENDING
-            )
+            assert session.get_one(VideoORM, video_id).status is VideoStatus.PENDING

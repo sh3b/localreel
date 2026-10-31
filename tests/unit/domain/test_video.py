@@ -135,6 +135,30 @@ class TestResetDownload:
         assert video.events == []
 
 
+class TestRetry:
+    def test_puts_a_failed_video_back_to_pending_with_fresh_attempts(self) -> None:
+        video = VideoFactory.build()
+        for _ in range(3):
+            video.start_download()
+            video.reset_download()
+        video.collect_events()
+
+        video.retry()
+
+        assert video.status is VideoStatus.PENDING
+        assert video.attempts == 0
+        assert video.error is None
+        assert video.events == []
+
+    def test_rejects_a_video_that_has_not_failed(self) -> None:
+        video = VideoFactory.build()
+
+        with pytest.raises(InvalidStatusTransition):
+            video.retry()
+
+        assert video.status is VideoStatus.PENDING
+
+
 class TestCollectEvents:
     def test_hands_over_the_events_once(self) -> None:
         video = VideoFactory.build()
