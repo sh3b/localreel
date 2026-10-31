@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 
 import pytest
-from sqlalchemy import Engine
+from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from localreel.containers import Container
@@ -9,8 +9,12 @@ from localreel.containers import Container
 
 @pytest.fixture(scope="session")
 def engine() -> Iterator[Engine]:
-    """One engine and connection pool for the whole run."""
-    engine = Container().engine()
+    """One engine and connection pool for the whole run. A lock wait fails
+    after 5 s, so a test that leaves a lock behind fails instead of hanging."""
+    engine = create_engine(
+        Container().settings().db_url,
+        connect_args={"options": "-c lock_timeout=5s"},
+    )
     yield engine
     engine.dispose()
 
