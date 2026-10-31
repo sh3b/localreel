@@ -6,7 +6,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from localreel.adapters.orm import VideoORM
 from localreel.domain.value_objects import VideoSource, VideoStatus
-from localreel.views.dtos import VideoCard, VideoPage, VideoSort
+from localreel.views.dtos import (
+    QueueItem,
+    QueuePage,
+    VideoCard,
+    VideoPage,
+    VideoSort,
+)
 
 
 class VideoView:
@@ -77,3 +83,39 @@ class VideoView:
                 )
             )
         return VideoPage(items=cards, next_cursor=next_cursor)
+
+    def list_queue(self, *, after: UUID | None, limit: int) -> QueuePage:
+        query = (
+            select(
+                VideoORM.id,
+                VideoORM.status,
+                VideoORM.source_url,
+                VideoORM.error,
+                VideoORM.created_at,
+            )
+            .where(VideoORM.status != VideoStatus.READY)
+            .order_by(VideoORM.id.desc())
+            .limit(limit + 1)
+        )
+        if after is not None:
+            query = query.where(VideoORM.id < after)
+
+        with self._session_factory() as session:
+            rows = session.execute(query).all()
+
+        next_cursor = None
+        if len(rows) > limit:
+            rows = rows[:limit]
+            next_cursor = rows[-1].id
+
+        items = [
+            QueueItem(
+                id=row.id,
+                status=row.status,
+                source_url=row.source_url,
+                error=row.error,
+                saved_at=row.created_at,
+            )
+            for row in rows
+        ]
+        return QueuePage(items=items, next_cursor=next_cursor)

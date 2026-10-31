@@ -9,7 +9,7 @@ from localreel.domain.commands import RetryVideo, SubmitURL
 from localreel.domain.unit_of_work import AbstractUnitOfWork
 from localreel.entrypoints.api.schemas.videos import SubmitURLRequest
 from localreel.service_layer.message_bus import MessageBus
-from localreel.views.dtos import VideoPage, VideoSort
+from localreel.views.dtos import QueuePage, VideoPage, VideoSort
 from localreel.views.videos import VideoView
 
 router = APIRouter()
@@ -46,3 +46,13 @@ def list_videos(
     limit: Annotated[int, Query(ge=1, le=100)] = 24,
 ) -> VideoPage:
     return view.list_videos(sort=sort, after=after, limit=limit)
+
+
+@router.get("/videos/queue")
+@inject
+def list_queue(
+    view: Annotated[VideoView, Depends(Provide[Container.video_view])],
+    after: UUID | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 24,
+) -> QueuePage:
+    return view.list_queue(after=after, limit=limit)

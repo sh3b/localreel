@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from localreel.domain.value_objects import VideoSource
+from localreel.domain.value_objects import VideoSource, VideoStatus
 
 
 class VideoSort(StrEnum):
@@ -26,4 +26,17 @@ class VideoCard(BaseModel):
 
 class VideoPage(BaseModel):
     items: list[VideoCard]
+    next_cursor: UUID | None
+
+
+class QueueItem(BaseModel):
+    id: UUID
+    status: VideoStatus
+    source_url: str
+    error: str | None
+    saved_at: datetime
+
+
+class QueuePage(BaseModel):
+    items: list[QueueItem]
     next_cursor: UUID | None

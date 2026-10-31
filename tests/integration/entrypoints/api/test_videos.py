@@ -99,6 +99,64 @@ class TestRetryVideo:
         }
 
 
+class TestListQueue:
+    def test_returns_the_videos_that_are_not_ready(
+        self, client: TestClient, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory.build()
+        repository.add(video)
+        video.start_download()
+        video.mark_failed("Video unavailable")
+        repository.save(video)
+        session.commit()
+
+        response = client.get("/videos/queue")
+
+        assert response.status_code == 200
+        page = response.json()
+        assert page["next_cursor"] is None
+        [item] = page["items"]
+        assert item["id"] == str(video.id)
+        assert item["status"] == "FAILED"
+        assert item["source_url"] == "https://youtu.be/jNQXAC9IVRw"
+        assert item["error"] == "Video unavailable"
+
+    def test_returns_an_empty_page_when_nothing_is_queued(
+        self, client: TestClient
+    ) -> None:
+        response = client.get("/videos/queue")
+
+        assert response.status_code == 200
+        assert response.json() == {"items": [], "next_cursor": None}
+
+    @pytest.mark.parametrize("limit", [0, 101])
+    def test_rejects_a_limit_out_of_range(self, client: TestClient, limit: int) -> None:
+        response = client.get("/videos/queue", params={"limit": limit})
+
+        assert response.status_code == 422
+
+    def test_pages_through_with_cursor_and_limit(
+        self, client: TestClient, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        older = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
+        newer = VideoFactory.build(source_url="https://youtu.be/dQw4w9WgXcQ")
+        repository.add(older)
+        repository.add(newer)
+        session.commit()
+
+        first = client.get("/videos/queue", params={"limit": 1}).json()
+        second = client.get(
+            "/videos/queue", params={"limit": 1, "after": first["next_cursor"]}
+        ).json()
+
+        assert [item["id"] for item in first["items"]] == [str(newer.id)]
+        assert first["next_cursor"] == str(newer.id)
+        assert [item["id"] for item in second["items"]] == [str(older.id)]
+        assert second["next_cursor"] is None
+
+
 class TestListVideos:
     def test_returns_the_ready_videos_as_cards(
         self, client: TestClient, session: Session
