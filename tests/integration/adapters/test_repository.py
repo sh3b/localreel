@@ -1,12 +1,14 @@
+from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import uuid7
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from localreel.adapters.repository import PostgresVideoRepository
 from localreel.containers import Container
 from localreel.domain.exceptions import VideoNotFound
+from localreel.domain.models.video import Video
 from localreel.domain.types import VideoSource, VideoStatus
 from localreel.domain.value_objects.source_metadata import SourceMetadata
 from tests.factories.video import VideoFactory
@@ -155,3 +157,40 @@ class TestPostgresVideoRepository:
         session.commit()
 
         assert repository.get_next_downloaded() is None
+
+
+class TestClaimsAcrossConnections:
+    def test_two_pending_claims_take_different_videos(
+        self,
+        real_session_factory: sessionmaker[Session],
+        commit_video: Callable[[Video], None],
+    ) -> None:
+        commit_video(VideoFactory())
+        commit_video(VideoFactory())
+
+        with real_session_factory() as first, real_session_factory() as second:
+            claimed = PostgresVideoRepository(first).get_next_pending()
+            other = PostgresVideoRepository(second).get_next_pending()
+
+            assert claimed is not None
+            assert other is not None
+            assert claimed.id != other.id
+
+    def test_two_downloaded_claims_take_different_videos(
+        self,
+        real_session_factory: sessionmaker[Session],
+        commit_video: Callable[[Video], None],
+    ) -> None:
+        for _ in range(2):
+            video = VideoFactory()
+            video.mark_downloading()
+            video.mark_downloaded("/downloads/v.webm")
+            commit_video(video)
+
+        with real_session_factory() as first, real_session_factory() as second:
+            claimed = PostgresVideoRepository(first).get_next_downloaded()
+            other = PostgresVideoRepository(second).get_next_downloaded()
+
+            assert claimed is not None
+            assert other is not None
+            assert claimed.id != other.id
