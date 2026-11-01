@@ -521,6 +521,28 @@
             ],
             "title": "Duration Sec"
           },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
           "source": {
             "$ref": "#/components/schemas/VideoSource"
           },
@@ -555,6 +577,8 @@
           "title",
           "uploader",
           "duration_sec",
+          "width",
+          "height",
           "source",
           "source_url",
           "saved_at",

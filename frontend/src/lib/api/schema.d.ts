@@ -182,6 +182,10 @@ export interface components {
 			uploader: string | null;
 			/** Duration Sec */
 			duration_sec: number | null;
+			/** Width */
+			width: number | null;
+			/** Height */
+			height: number | null;
 			source: components['schemas']['VideoSource'];
 			/** Source Url */
 			source_url: string;

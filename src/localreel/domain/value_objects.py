@@ -101,4 +101,6 @@ class SourceMetadata:
     uploader: str | None
     view_count: int | None
     duration_sec: int | None
+    width: int | None
+    height: int | None
     raw: dict[str, Any]

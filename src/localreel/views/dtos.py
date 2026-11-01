@@ -17,6 +17,8 @@ class VideoCard(BaseModel):
     title: str | None
     uploader: str | None
     duration_sec: int | None
+    width: int | None
+    height: int | None
     source: VideoSource
     source_url: str
     saved_at: datetime

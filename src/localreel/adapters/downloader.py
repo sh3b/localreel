@@ -65,6 +65,8 @@ class YtDlpDownloader(AbstractDownloader):
                 uploader=info.get("uploader"),
                 view_count=info.get("view_count"),
                 duration_sec=round(duration) if duration is not None else None,
+                width=info.get("width"),
+                height=info.get("height"),
                 raw={k: v for k, v in info.items() if k not in self._BULK_KEYS},
             ),
         )

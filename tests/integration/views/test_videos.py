@@ -23,6 +23,7 @@ class TestListVideos:
         assert card.title == "Me at the zoo"
         assert card.uploader == "jawed"
         assert card.duration_sec == 19
+        assert (card.width, card.height) == (320, 240)
         assert card.source is VideoSource.YOUTUBE
         assert card.source_url == "https://youtu.be/jNQXAC9IVRw"
         assert card.saved_at == session.get_one(VideoORM, video.id).created_at

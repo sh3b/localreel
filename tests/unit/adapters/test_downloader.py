@@ -75,6 +75,8 @@ class TestDownloadResult:
         "uploader": "jawed",
         "view_count": 448473011,
         "duration": 19.4,
+        "width": 320,
+        "height": 240,
         "formats": [{"format_id": "18"}],
         "automatic_captions": {"en": []},
         "thumbnails": [
@@ -109,6 +111,7 @@ class TestDownloadResult:
         assert metadata.uploader == "jawed"
         assert metadata.view_count == 448473011
         assert metadata.duration_sec == 19
+        assert (metadata.width, metadata.height) == (320, 240)
 
     def test_raw_keeps_everything_but_the_bulky_keys(self) -> None:
         raw = self._result().metadata.raw
@@ -130,4 +133,5 @@ class TestDownloadResult:
 
         assert result.metadata.title is None
         assert result.metadata.duration_sec is None
+        assert (result.metadata.width, result.metadata.height) == (None, None)
         assert result.thumbnail_path is None

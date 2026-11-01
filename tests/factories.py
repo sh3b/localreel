@@ -35,4 +35,6 @@ class SourceMetadataFactory(factory.Factory[SourceMetadata]):
     uploader = "jawed"
     view_count = 448473011
     duration_sec = 19
+    width = 320
+    height = 240
     raw = factory.LazyFunction(lambda: {"id": "jNQXAC9IVRw", "extractor": "youtube"})

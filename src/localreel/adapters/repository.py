@@ -81,6 +81,8 @@ class PostgresVideoRepository(AbstractVideoRepository):
                 uploader=row.source_uploader,
                 view_count=row.source_view_count,
                 duration_sec=row.source_duration_sec,
+                width=row.source_width,
+                height=row.source_height,
                 raw=row.source_raw,
             )
 
@@ -118,6 +120,8 @@ class PostgresVideoRepository(AbstractVideoRepository):
             row.source_uploader = metadata.uploader
             row.source_view_count = metadata.view_count
             row.source_duration_sec = metadata.duration_sec
+            row.source_width = metadata.width
+            row.source_height = metadata.height
             row.source_raw = metadata.raw
 
         return row
