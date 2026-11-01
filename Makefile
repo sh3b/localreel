@@ -3,7 +3,7 @@ export PYTHONPATH := src
 -include .env
 export
 
-.PHONY: install test cov lint format typecheck migration migrate db db-reset api worker
+.PHONY: install test cov lint format typecheck migration migrate db db-reset api worker fe-install fe-dev fe-check fe-test fe-build
 
 install:
 	uv sync
@@ -49,3 +49,18 @@ api:
 
 worker:
 	uv run python -m localreel.entrypoints.worker.main
+
+fe-install:
+	cd frontend && npm ci
+
+fe-dev:
+	cd frontend && npm run dev
+
+fe-check:
+	cd frontend && npm run lint && npm run check
+
+fe-test:
+	cd frontend && npm test
+
+fe-build:
+	cd frontend && npm run build

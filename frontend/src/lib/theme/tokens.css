@@ -1,0 +1,50 @@
+/*
+ * Design tokens: the only place colours, fonts and sizes are defined.
+ *
+ * Components never use raw values; they use the Tailwind utilities mapped onto
+ * these variables in app.css (bg-bg, text-muted, border-line, ...).
+ *
+ * To add a theme: copy a [data-theme] block, give it a new name, change the
+ * values, and register the name in themes.ts. Nothing else needs to change.
+ */
+
+:root,
+[data-theme='tool'] {
+	color-scheme: dark;
+
+	--lr-bg: #0b0c0e;
+
+	/* Lines and text */
+	--lr-line: #23272e;
+	--lr-line-strong: #343a44;
+	--lr-fg: #d6dce4;
+	--lr-fg-strong: #f1f4f8;
+	--lr-muted: #8c97a6;
+	--lr-faint: #6b7686;
+
+	/* One accent, used for focus and the active place */
+	--lr-accent: #ff8a3d;
+
+	/* Type */
+	--lr-font-ui: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+	--lr-text-ui: 13px;
+
+	/* Rhythm */
+	--lr-bar-height: 40px;
+}
+
+[data-theme='tool-light'] {
+	color-scheme: light;
+
+	--lr-bg: #f3f4f6;
+
+	--lr-line: #d9dde3;
+	--lr-line-strong: #b9c0ca;
+	--lr-fg: #2a3038;
+	--lr-fg-strong: #0b0d10;
+	--lr-muted: #56606d;
+	--lr-faint: #6b7480;
+
+	/* Darker orange so text in it keeps 4.5:1 on white */
+	--lr-accent: #b5500f;
+}
