@@ -15,8 +15,8 @@ from localreel.domain.commands import (
     StartDownload,
     SubmitURL,
 )
-from localreel.domain.exceptions import DuplicateVideo, UnsupportedSource, VideoNotFound
-from localreel.domain.value_objects import VideoSource, VideoStatus
+from localreel.domain.exceptions import DuplicateVideo, VideoNotFound
+from localreel.domain.value_objects import SourceURL, VideoSource, VideoStatus
 from tests.factories import SourceMetadataFactory, VideoFactory
 
 
@@ -26,7 +26,7 @@ class TestSubmitURL:
     ) -> None:
         with container.uow():
             container.message_bus().handle(
-                SubmitURL(url="https://youtu.be/jNQXAC9IVRw")
+                SubmitURL(source_url=SourceURL.parse("https://youtu.be/jNQXAC9IVRw"))
             )
 
         row = session.scalars(select(VideoORM)).one()
@@ -43,7 +43,9 @@ class TestSubmitURL:
             "https://www.youtube.com/watch?v=jNQXAC9IVRw",
         ):
             with container.uow():
-                container.message_bus().handle(SubmitURL(url=url))
+                container.message_bus().handle(
+                    SubmitURL(source_url=SourceURL.parse(url))
+                )
 
         assert session.scalar(select(func.count()).select_from(VideoORM)) == 1
 
@@ -52,25 +54,17 @@ class TestSubmitURL:
     ) -> None:
         with container.uow():
             container.message_bus().handle(
-                SubmitURL(url="https://youtu.be/jNQXAC9IVRw")
+                SubmitURL(source_url=SourceURL.parse("https://youtu.be/jNQXAC9IVRw"))
             )
         # Both submits passed the check: the second one only meets the constraint.
         monkeypatch.setattr(PostgresVideoRepository, "exists", lambda *_, **__: False)
 
         with pytest.raises(DuplicateVideo), container.uow():
             container.message_bus().handle(
-                SubmitURL(url="https://youtu.be/jNQXAC9IVRw")
+                SubmitURL(source_url=SourceURL.parse("https://youtu.be/jNQXAC9IVRw"))
             )
 
         assert session.scalar(select(func.count()).select_from(VideoORM)) == 1
-
-    def test_unsupported_url_raises_and_persists_nothing(
-        self, container: Container, session: Session
-    ) -> None:
-        with pytest.raises(UnsupportedSource), container.uow():
-            container.message_bus().handle(SubmitURL(url="https://example.com/v/1"))
-
-        assert session.scalar(select(func.count()).select_from(VideoORM)) == 0
 
 
 class TestDownloadCommands:

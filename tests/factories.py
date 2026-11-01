@@ -4,7 +4,7 @@ from uuid import uuid7
 import factory
 
 from localreel.domain.models.video import Video
-from localreel.domain.value_objects import SourceMetadata
+from localreel.domain.value_objects import SourceMetadata, SourceURL
 
 
 class VideoFactory(factory.Factory[Video]):
@@ -20,7 +20,9 @@ class VideoFactory(factory.Factory[Video]):
     @classmethod
     def _build(cls, model_class: type[Video], *args: Any, **kwargs: Any) -> Video:
         # Through the domain's own constructor, so source and status are derived.
-        return model_class.create(**kwargs)
+        return model_class.create(
+            id=kwargs["id"], source_url=SourceURL.parse(kwargs["source_url"])
+        )
 
 
 class SourceMetadataFactory(factory.Factory[SourceMetadata]):

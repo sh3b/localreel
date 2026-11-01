@@ -43,13 +43,12 @@ class Video:
         self.events: list[Event] = []
 
     @classmethod
-    def create(cls, *, id: UUID, source_url: str) -> Video:
-        parsed = SourceURL.parse(source_url)
+    def create(cls, *, id: UUID, source_url: SourceURL) -> Video:
         return cls(
             id=id,
-            source=parsed.source,
-            source_url=parsed.url,
-            source_key=parsed.key,
+            source=source_url.source,
+            source_url=source_url.url,
+            source_key=source_url.key,
             status=VideoStatus.PENDING,
             attempts=0,
             file_path=None,

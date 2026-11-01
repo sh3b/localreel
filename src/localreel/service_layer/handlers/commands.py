@@ -11,7 +11,6 @@ from localreel.domain.commands import (
 )
 from localreel.domain.models.video import Video
 from localreel.domain.unit_of_work import AbstractUnitOfWork
-from localreel.domain.value_objects import SourceURL
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +20,9 @@ class SubmitURLHandler:
         self._uow = uow
 
     def __call__(self, cmd: SubmitURL) -> None:
-        source_key = SourceURL.parse(cmd.url).key
-        if self._uow.videos.exists(source_key=source_key):
+        if self._uow.videos.exists(source_key=cmd.source_url.key):
             return
-        video = Video.create(id=uuid7(), source_url=cmd.url)
+        video = Video.create(id=uuid7(), source_url=cmd.source_url)
         self._uow.videos.add(video)
 
 

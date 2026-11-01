@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query, status
 from localreel.containers import Container
 from localreel.domain.commands import RetryVideo, SubmitURL
 from localreel.domain.unit_of_work import AbstractUnitOfWork
+from localreel.domain.value_objects import SourceURL
 from localreel.entrypoints.api.schemas.videos import SubmitURLRequest
 from localreel.service_layer.message_bus import MessageBus
 from localreel.views.dtos import QueuePage, VideoPage, VideoSort
@@ -22,8 +23,9 @@ def submit_url(
     uow: Annotated[AbstractUnitOfWork, Depends(Provide[Container.uow])],
     bus: Annotated[MessageBus, Depends(Provide[Container.message_bus])],
 ) -> None:
+    source_url = SourceURL.parse(body.url)
     with uow:
-        bus.handle(SubmitURL(url=body.url))
+        bus.handle(SubmitURL(source_url=source_url))
 
 
 @router.post("/videos/{video_id}/retry", status_code=status.HTTP_202_ACCEPTED)

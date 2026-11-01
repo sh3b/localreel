@@ -3,9 +3,9 @@ from uuid import uuid7
 import pytest
 
 from localreel.domain.events import VideoFailed
-from localreel.domain.exceptions import InvalidStatusTransition, UnsupportedSource
+from localreel.domain.exceptions import InvalidStatusTransition
 from localreel.domain.models.video import Video
-from localreel.domain.value_objects import VideoSource, VideoStatus
+from localreel.domain.value_objects import SourceURL, VideoSource, VideoStatus
 from tests.factories import SourceMetadataFactory, VideoFactory
 
 
@@ -13,7 +13,9 @@ class TestCreate:
     def test_starts_pending_with_its_source(self) -> None:
         video_id = uuid7()
 
-        video = Video.create(id=video_id, source_url="https://youtu.be/jNQXAC9IVRw")
+        video = Video.create(
+            id=video_id, source_url=SourceURL.parse("https://youtu.be/jNQXAC9IVRw")
+        )
 
         assert video.id == video_id
         assert video.source is VideoSource.YOUTUBE
@@ -21,10 +23,6 @@ class TestCreate:
         assert video.source_key == "youtube:jNQXAC9IVRw"
         assert video.status is VideoStatus.PENDING
         assert video.attempts == 0
-
-    def test_rejects_an_unsupported_url(self) -> None:
-        with pytest.raises(UnsupportedSource):
-            Video.create(id=uuid7(), source_url="https://vimeo.com/12345")
 
 
 class TestDownloadTransitions:

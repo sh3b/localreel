@@ -2,12 +2,12 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from localreel.domain.messages import Command
-from localreel.domain.value_objects import SourceMetadata
+from localreel.domain.value_objects import SourceMetadata, SourceURL
 
 
 @dataclass(frozen=True)
 class SubmitURL(Command):
-    url: str
+    source_url: SourceURL
 
 
 @dataclass(frozen=True)
