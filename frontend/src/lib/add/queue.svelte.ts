@@ -5,6 +5,7 @@ export type QueueServer = {
 	queue: (signal: AbortSignal) => Promise<QueuePage>;
 	submit: (urls: string[], signal: AbortSignal) => Promise<SubmitResult[]>;
 	retry: (id: string, signal: AbortSignal) => Promise<void>;
+	remove: (id: string, signal: AbortSignal) => Promise<void>;
 };
 
 // The largest limit GET /videos/queue accepts (routers/videos.py). The server
@@ -32,6 +33,10 @@ const fromApi: QueueServer = {
 			params: { path: { video_id: id } },
 			signal
 		});
+	},
+	async remove(id, signal) {
+		// Same as retry: a 404 or 409 shows in the refresh that follows.
+		await api.DELETE('/videos/{video_id}', { params: { path: { video_id: id } }, signal });
 	}
 };
 
@@ -61,8 +66,9 @@ export class AddQueue {
 	sending = $state(false);
 	sendFailed = $state(false);
 	retrying = new SvelteSet<string>();
+	removing = new SvelteSet<string>();
 
-	// Refreshes overlap (the poll, plus one after every send and retry) and
+	// Refreshes overlap (the poll, plus one after every send, retry and remove) and
 	// their answers can arrive out of order. Each is numbered, and only an
 	// answer newer than the one on screen replaces it.
 	#asked = 0;
@@ -141,5 +147,16 @@ export class AddQueue {
 		}
 		await this.refresh();
 		this.retrying.delete(id);
+	}
+
+	async remove(id: string): Promise<void> {
+		this.removing.add(id);
+		try {
+			await withTimeout((signal) => this.#server.remove(id, signal));
+		} catch {
+			// No answer: the refresh below shows whether the server is reachable.
+		}
+		await this.refresh();
+		this.removing.delete(id);
 	}
 }

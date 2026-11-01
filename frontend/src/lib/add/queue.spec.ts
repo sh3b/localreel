@@ -43,6 +43,7 @@ function server(overrides: Partial<QueueServer> = {}): QueueServer {
 		queue: () => Promise.resolve(page([])),
 		submit: () => Promise.resolve([]),
 		retry: async () => {},
+		remove: async () => {},
 		...overrides
 	};
 }
@@ -191,22 +192,24 @@ describe('AddQueue', () => {
 		stop();
 	});
 
-	it('gives up on a send or retry the server never answers', async () => {
+	it('gives up on a send, retry or remove the server never answers', async () => {
 		vi.useFakeTimers();
 		const queue = new AddQueue(
 			server({
 				submit: (_urls, signal) => neverAnswered(signal),
-				retry: (_id, signal) => neverAnswered(signal)
+				retry: (_id, signal) => neverAnswered(signal),
+				remove: (_id, signal) => neverAnswered(signal)
 			})
 		);
 
 		const sent = queue.send(['https://youtu.be/a']);
 		void queue.retry('a');
+		void queue.remove('b');
 		await vi.advanceTimersByTimeAsync(10_000);
 
 		expect(await sent).toBeNull();
 		expect([queue.sending, queue.sendFailed]).toEqual([false, true]);
-		expect(queue.retrying.has('a')).toBe(false);
+		expect([queue.retrying.has('a'), queue.removing.has('b')]).toEqual([false, false]);
 	});
 
 	it('counts the waiting videos past the limit', async () => {
@@ -262,6 +265,34 @@ describe('AddQueue', () => {
 		await queue.retry('a');
 
 		expect(queue.retrying.has('a')).toBe(false);
+		expect(queue.loadFailed).toBe(true);
+	});
+
+	it('removes a video and shows the queue without it', async () => {
+		let ids = ['a', 'b'];
+		const queue = new AddQueue(
+			server({
+				remove: (id) => {
+					ids = ids.filter((other) => other !== id);
+					return Promise.resolve();
+				},
+				queue: () => Promise.resolve(page(ids.map((id) => item(id, 'PENDING'))))
+			})
+		);
+		await queue.refresh();
+
+		await queue.remove('a');
+
+		expect(queue.items.map((i) => i.id)).toEqual(['b']);
+		expect(queue.removing.has('a')).toBe(false);
+	});
+
+	it('stops showing a remove as busy even when the server cannot be reached', async () => {
+		const queue = new AddQueue(server({ remove: noNetwork, queue: noNetwork }));
+
+		await queue.remove('a');
+
+		expect(queue.removing.has('a')).toBe(false);
 		expect(queue.loadFailed).toBe(true);
 	});
 });

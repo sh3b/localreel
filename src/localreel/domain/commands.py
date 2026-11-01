@@ -37,3 +37,8 @@ class MarkFailed(Command):
 @dataclass(frozen=True)
 class RetryVideo(Command):
     video_id: UUID
+
+
+@dataclass(frozen=True)
+class RemoveVideo(Command):
+    video_id: UUID

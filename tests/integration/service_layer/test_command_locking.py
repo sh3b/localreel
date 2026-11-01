@@ -8,7 +8,13 @@ from sqlalchemy.orm import Session
 
 from localreel.adapters.orm import VideoORM
 from localreel.containers import Container
-from localreel.domain.commands import MarkFailed, MarkReady, ResetDownload, RetryVideo
+from localreel.domain.commands import (
+    MarkFailed,
+    MarkReady,
+    RemoveVideo,
+    ResetDownload,
+    RetryVideo,
+)
 from localreel.domain.exceptions import InvalidStatusTransition
 from localreel.domain.value_objects import VideoStatus
 from tests.factories import SourceMetadataFactory, VideoFactory
@@ -107,3 +113,34 @@ class TestCommandLocking:
         assert isinstance(errors[0], InvalidStatusTransition)
         with Session(engine) as session:
             assert session.get_one(VideoORM, video_id).status is VideoStatus.PENDING
+
+    def test_remove_waits_for_a_claim_and_refuses_the_claimed_video(
+        self,
+        committing_container: Container,
+        video_in: Callable[[VideoStatus], UUID],
+        engine: Engine,
+    ) -> None:
+        container = committing_container
+        video_id = video_in(VideoStatus.PENDING)
+        errors: list[Exception] = []
+
+        def send() -> None:
+            try:
+                with container.uow():
+                    container.message_bus().handle(RemoveVideo(video_id=video_id))
+            except Exception as exc:
+                errors.append(exc)
+
+        with Session(engine) as worker, worker.begin():
+            row = worker.get_one(VideoORM, video_id, with_for_update=True)
+            sender = threading.Thread(target=send)
+            sender.start()
+            sender.join(timeout=0.5)
+            row.status = VideoStatus.DOWNLOADING
+
+        sender.join(timeout=5)
+        assert not sender.is_alive()
+        assert len(errors) == 1
+        assert isinstance(errors[0], InvalidStatusTransition)
+        with Session(engine) as session:
+            assert session.get_one(VideoORM, video_id).status is VideoStatus.DOWNLOADING

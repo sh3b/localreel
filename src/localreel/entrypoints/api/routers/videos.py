@@ -6,7 +6,7 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Query, status
 
 from localreel.containers import Container
-from localreel.domain.commands import RetryVideo, SubmitURL
+from localreel.domain.commands import RemoveVideo, RetryVideo, SubmitURL
 from localreel.domain.exceptions import DuplicateVideo, UnsupportedSource
 from localreel.domain.unit_of_work import AbstractUnitOfWork
 from localreel.domain.value_objects import SourceURL, VideoStatus
@@ -99,6 +99,17 @@ def retry_video(
 ) -> None:
     with uow:
         bus.handle(RetryVideo(video_id=video_id))
+
+
+@router.delete("/videos/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
+@inject
+def remove_video(
+    video_id: UUID,
+    uow: Annotated[AbstractUnitOfWork, Depends(Provide[Container.uow])],
+    bus: Annotated[MessageBus, Depends(Provide[Container.message_bus])],
+) -> None:
+    with uow:
+        bus.handle(RemoveVideo(video_id=video_id))
 
 
 @router.get("/videos")

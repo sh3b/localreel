@@ -211,6 +211,51 @@ class TestRetryVideo:
         }
 
 
+class TestRemoveVideo:
+    def test_returns_204_and_deletes_a_failed_video(
+        self, client: TestClient, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory.build()
+        repository.add(video)
+        video.start_download()
+        video.mark_failed("Video unavailable")
+        repository.save(video)
+        session.commit()
+
+        response = client.delete(f"/videos/{video.id}")
+
+        assert response.status_code == 204
+        session.expire_all()
+        assert session.get(VideoORM, video.id) is None
+
+    def test_an_unknown_video_returns_404(self, client: TestClient) -> None:
+        video_id = uuid7()
+
+        response = client.delete(f"/videos/{video_id}")
+
+        assert response.status_code == 404
+        assert response.json() == {"detail": f"Video {video_id} not found"}
+
+    def test_a_downloading_video_returns_409(
+        self, client: TestClient, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory.build()
+        repository.add(video)
+        video.start_download()
+        repository.save(video)
+        session.commit()
+
+        response = client.delete(f"/videos/{video.id}")
+
+        assert response.status_code == 409
+        assert response.json() == {
+            "detail": f"Video {video.id} is DOWNLOADING; only a PENDING or FAILED "
+            "video can be removed"
+        }
+
+
 class TestListQueue:
     def test_returns_the_videos_that_are_not_ready(
         self, client: TestClient, session: Session

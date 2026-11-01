@@ -10,6 +10,7 @@ from localreel.containers import Container
 from localreel.domain.commands import (
     MarkFailed,
     MarkReady,
+    RemoveVideo,
     ResetDownload,
     RetryVideo,
     StartDownload,
@@ -18,6 +19,7 @@ from localreel.domain.commands import (
 from localreel.domain.exceptions import DuplicateVideo, VideoNotFound
 from localreel.domain.value_objects import SourceURL, VideoSource, VideoStatus
 from tests.factories import SourceMetadataFactory, VideoFactory
+from tests.integration.service_layer.test_download_service import FakeDownloader
 
 
 class TestSubmitURL:
@@ -143,6 +145,18 @@ class TestDownloadCommands:
         assert row.status is VideoStatus.PENDING
         assert row.attempts == 0
         assert row.error is None
+
+    def test_remove_video_deletes_the_row_and_discards_its_files(
+        self, container: Container, session: Session
+    ) -> None:
+        video_id = self._pending_video(container)
+        downloader = FakeDownloader()
+
+        with container.downloader.override(downloader), container.uow():
+            container.message_bus().handle(RemoveVideo(video_id=video_id))
+
+        assert session.get(VideoORM, video_id) is None
+        assert downloader.discarded == [video_id]
 
     def test_handled_events_are_not_left_on_the_video(
         self, container: Container

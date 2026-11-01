@@ -1,4 +1,4 @@
-from uuid import UUID
+from uuid import UUID, uuid7
 
 import pytest
 from sqlalchemy.orm import Session
@@ -83,6 +83,20 @@ class TestDownloadService:
         assert did_work is True
         assert downloader.downloaded == []
         assert session.get_one(VideoORM, video.id).status is VideoStatus.DOWNLOADING
+
+    def test_skips_a_video_removed_after_the_pick(
+        self, container: Container, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        removed_id = uuid7()
+        monkeypatch.setattr(
+            PostgresVideoRepository, "next_pending", lambda _: removed_id
+        )
+        downloader = FakeDownloader()
+
+        did_work = self._service(container, downloader).download_next()
+
+        assert did_work is True
+        assert downloader.downloaded == []
 
     def test_reset_puts_interrupted_downloads_back_to_pending(
         self, container: Container, session: Session

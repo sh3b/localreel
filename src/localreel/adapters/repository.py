@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from psycopg.errors import UniqueViolation
-from sqlalchemy import exists, select
+from sqlalchemy import delete, exists, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -67,6 +67,9 @@ class PostgresVideoRepository(AbstractVideoRepository):
 
     def save(self, video: Video) -> None:
         self._session.merge(self._to_orm(video))
+
+    def delete(self, video: Video) -> None:
+        self._session.execute(delete(VideoORM).where(VideoORM.id == video.id))
 
     @staticmethod
     def _to_domain(row: VideoORM) -> Video:

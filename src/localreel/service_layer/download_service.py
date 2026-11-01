@@ -7,7 +7,7 @@ from localreel.domain.commands import (
     StartDownload,
 )
 from localreel.domain.downloader import AbstractDownloader
-from localreel.domain.exceptions import InvalidStatusTransition
+from localreel.domain.exceptions import InvalidStatusTransition, VideoNotFound
 from localreel.domain.unit_of_work import AbstractUnitOfWork
 from localreel.service_layer.message_bus import MessageBus
 
@@ -37,9 +37,8 @@ class DownloadService:
         # Pick: read only.
         with self._uow(commit=False):
             video_id = self._uow.videos.next_pending()
-            if video_id is None:
-                return False
-            source_url = self._uow.videos.get(video_id, lock=False).source_url
+        if video_id is None:
+            return False
 
         # Claim: committed before the download, so a crash leaves a row to recover.
         try:
@@ -48,6 +47,13 @@ class DownloadService:
         except InvalidStatusTransition:
             logger.info("video %s was already taken", video_id)
             return True
+        except VideoNotFound:
+            logger.info("video %s was removed before it started", video_id)
+            return True
+
+        # Read after the claim: a downloading video can no longer be removed.
+        with self._uow(commit=False):
+            source_url = self._uow.videos.get(video_id, lock=False).source_url
 
         # Download: outside any transaction, it takes time.
         command: MarkReady | MarkFailed

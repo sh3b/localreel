@@ -2,7 +2,7 @@ from uuid import uuid7
 
 import pytest
 
-from localreel.domain.events import VideoFailed
+from localreel.domain.events import VideoFailed, VideoRemoved
 from localreel.domain.exceptions import InvalidStatusTransition
 from localreel.domain.models.video import Video
 from localreel.domain.value_objects import SourceURL, VideoSource, VideoStatus
@@ -155,6 +155,52 @@ class TestRetry:
             video.retry()
 
         assert video.status is VideoStatus.PENDING
+
+
+class TestRemove:
+    def test_removes_a_pending_video(self) -> None:
+        video = VideoFactory.build()
+
+        video.remove()
+
+        assert video.removed is True
+        assert video.events == [VideoRemoved(video.id)]
+
+    def test_removes_a_failed_video(self) -> None:
+        video = VideoFactory.build()
+        video.start_download()
+        video.mark_failed("Video unavailable")
+        video.collect_events()
+
+        video.remove()
+
+        assert video.removed is True
+        assert video.events == [VideoRemoved(video.id)]
+
+    def test_rejects_a_downloading_video(self) -> None:
+        video = VideoFactory.build()
+        video.start_download()
+
+        with pytest.raises(InvalidStatusTransition):
+            video.remove()
+
+        assert video.removed is False
+        assert video.events == []
+
+    def test_rejects_a_ready_video(self) -> None:
+        video = VideoFactory.build()
+        video.start_download()
+        video.mark_ready(
+            file_path="a.webm",
+            thumbnail_path=None,
+            metadata=SourceMetadataFactory.build(),
+        )
+
+        with pytest.raises(InvalidStatusTransition):
+            video.remove()
+
+        assert video.removed is False
+        assert video.events == []
 
 
 class TestCollectEvents:

@@ -4,6 +4,7 @@ from uuid import uuid7
 from localreel.domain.commands import (
     MarkFailed,
     MarkReady,
+    RemoveVideo,
     ResetDownload,
     RetryVideo,
     StartDownload,
@@ -86,3 +87,12 @@ class RetryVideoHandler:
     def __call__(self, cmd: RetryVideo) -> None:
         video = self._uow.videos.get(cmd.video_id, lock=True)
         video.retry()
+
+
+class RemoveVideoHandler:
+    def __init__(self, uow: AbstractUnitOfWork) -> None:
+        self._uow = uow
+
+    def __call__(self, cmd: RemoveVideo) -> None:
+        video = self._uow.videos.get(cmd.video_id, lock=True)
+        video.remove()

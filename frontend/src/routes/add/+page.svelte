@@ -197,7 +197,9 @@
 			items={queue.items}
 			waitingNotShown={queue.waitingNotShown}
 			retrying={queue.retrying}
+			removing={queue.removing}
 			onretry={(id) => queue.retry(id)}
+			onremove={(id) => queue.remove(id)}
 		/>
 	</section>
 </div>

@@ -28,7 +28,10 @@ class PostgresUnitOfWork(AbstractUnitOfWork):
 
     def commit(self) -> None:
         for video in self.videos.seen.values():
-            self.videos.save(video)
+            if video.removed:
+                self.videos.delete(video)
+            else:
+                self.videos.save(video)
         self._session.commit()
 
     def rollback(self) -> None:
