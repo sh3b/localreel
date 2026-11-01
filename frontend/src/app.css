@@ -4,6 +4,7 @@
 /* Tailwind utilities that read the theme tokens, so a theme switch restyles everything. */
 @theme inline {
 	--color-bg: var(--lr-bg);
+	--color-surface: var(--lr-surface);
 	--color-line: var(--lr-line);
 	--color-line-strong: var(--lr-line-strong);
 	--color-fg: var(--lr-fg);
@@ -11,7 +12,13 @@
 	--color-muted: var(--lr-muted);
 	--color-faint: var(--lr-faint);
 	--color-accent: var(--lr-accent);
+	--color-on-accent: var(--lr-on-accent);
+	--color-ok: var(--lr-ok);
+	--color-warn: var(--lr-warn);
+	--color-danger: var(--lr-danger);
 
+	--font-ui: var(--lr-font-ui);
+	--font-title: var(--lr-font-title);
 	--text-ui: var(--lr-text-ui);
 
 	--spacing-bar: var(--lr-bar-height);

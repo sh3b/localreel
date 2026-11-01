@@ -3,6 +3,7 @@
 	import ThemeToggle from '#lib/components/ThemeToggle.svelte';
 	import { isTyping } from '#lib/shell/keyboard.ts';
 	import { isActive, NAV } from '#lib/shell/nav.ts';
+	import { shell } from '#lib/shell/shell.svelte.ts';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
@@ -40,12 +41,24 @@
 				</a>
 			{/each}
 		</nav>
-		<div class="ml-auto"><ThemeToggle /></div>
+		<p class="ml-auto truncate text-faint">{shell.status}</p>
+		<ThemeToggle />
 	</header>
 
 	<main class="min-h-0 flex-1">
 		{@render children()}
 	</main>
+
+	{#if shell.hints.length > 0}
+		<footer
+			class="hidden h-9 shrink-0 items-center gap-6 border-t border-line px-4 text-faint md:flex"
+			aria-label="Keyboard shortcuts"
+		>
+			{#each shell.hints as hint (hint.keys)}
+				<span><kbd class="font-ui font-bold text-fg">{hint.keys}</kbd> {hint.action}</span>
+			{/each}
+		</footer>
+	{/if}
 
 	<nav aria-label="Main" class="grid h-14 shrink-0 grid-cols-3 border-t border-line md:hidden">
 		{#each NAV as item (item.href)}

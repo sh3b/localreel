@@ -3,7 +3,7 @@ export PYTHONPATH := src
 -include .env
 export
 
-.PHONY: install test cov lint format typecheck migration migrate db db-reset api worker fe-install fe-dev fe-check fe-test fe-build
+.PHONY: install test cov lint format typecheck migration migrate db db-reset api worker openapi fe-install fe-dev fe-check fe-test fe-build
 
 install:
 	uv sync
@@ -49,6 +49,12 @@ api:
 
 worker:
 	uv run python -m localreel.entrypoints.worker.main
+
+# The frontend's typed API client is generated from FastAPI's schema. Run after
+# changing an endpoint or a DTO, and commit both generated files.
+openapi:
+	uv run python -c "import json; from localreel.entrypoints.api.main import create_app; print(json.dumps(create_app().openapi(), indent=2))" > frontend/src/lib/api/openapi.json
+	cd frontend && npm run gen:api
 
 fe-install:
 	cd frontend && npm ci

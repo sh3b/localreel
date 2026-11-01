@@ -16,6 +16,15 @@ export default defineConfig({
 			adapter: adapter({ fallback: 'index.html' })
 		})
 	],
+	server: {
+		proxy: {
+			// The API under /api, as the UI calls it; uvicorn serves it at the root.
+			'/api': {
+				target: 'http://127.0.0.1:8000',
+				rewrite: (path) => path.replace(/^\/api/, '')
+			}
+		}
+	},
 	test: {
 		expect: { requireAssertions: true },
 		environment: 'node',

@@ -12,7 +12,9 @@
 [data-theme='tool'] {
 	color-scheme: dark;
 
+	/* Surfaces */
 	--lr-bg: #0b0c0e;
+	--lr-surface: #0f1216;
 
 	/* Lines and text */
 	--lr-line: #23272e;
@@ -22,11 +24,18 @@
 	--lr-muted: #8c97a6;
 	--lr-faint: #6b7686;
 
-	/* One accent, used for focus and the active place */
+	/* One accent, used for focus, the active place and the primary action */
 	--lr-accent: #ff8a3d;
+	--lr-on-accent: #0b0c0e;
+
+	/* Status */
+	--lr-ok: #7bd88f;
+	--lr-warn: #e0b44c;
+	--lr-danger: #e57373;
 
 	/* Type */
 	--lr-font-ui: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+	--lr-font-title: system-ui, -apple-system, 'Segoe UI', sans-serif;
 	--lr-text-ui: 13px;
 
 	/* Rhythm */
@@ -37,6 +46,7 @@
 	color-scheme: light;
 
 	--lr-bg: #f3f4f6;
+	--lr-surface: #ffffff;
 
 	--lr-line: #d9dde3;
 	--lr-line-strong: #b9c0ca;
@@ -47,4 +57,9 @@
 
 	/* Darker orange so text in it keeps 4.5:1 on white */
 	--lr-accent: #b5500f;
+	--lr-on-accent: #ffffff;
+
+	--lr-ok: #1f7a3d;
+	--lr-warn: #8a6100;
+	--lr-danger: #b42318;
 }

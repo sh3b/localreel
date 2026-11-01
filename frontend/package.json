@@ -13,7 +13,8 @@
 		"lint": "prettier --check . && eslint . --max-warnings 0",
 		"format": "prettier --write . && eslint . --fix",
 		"test:unit": "vitest",
-		"test": "npm run test:unit -- --run"
+		"test": "npm run test:unit -- --run",
+		"gen:api": "npx --yes openapi-typescript@7.13.0 src/lib/api/openapi.json -o src/lib/api/schema.d.ts && prettier --write src/lib/api/schema.d.ts"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
@@ -42,5 +43,8 @@
 	},
 	"imports": {
 		"#lib/*": "./src/lib/*"
+	},
+	"dependencies": {
+		"openapi-fetch": "^0.17.0"
 	}
 }
