@@ -37,9 +37,15 @@ class QueueItem(BaseModel):
     saved_at: datetime
 
 
+class QueueTotals(BaseModel):
+    pending: int
+    downloading: int
+    failed: int
+
+
 class QueuePage(BaseModel):
     items: list[QueueItem]
-    next_cursor: UUID | None
+    totals: QueueTotals
 
 
 class SavedLink(BaseModel):

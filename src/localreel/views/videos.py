@@ -9,6 +9,7 @@ from localreel.domain.value_objects import VideoSource, VideoStatus
 from localreel.views.dtos import (
     QueueItem,
     QueuePage,
+    QueueTotals,
     SavedLink,
     VideoCard,
     VideoPage,
@@ -85,7 +86,20 @@ class VideoView:
             )
         return VideoPage(items=cards, next_cursor=next_cursor)
 
-    def list_queue(self, *, after: UUID | None, limit: int) -> QueuePage:
+    # Downloading and failed first: the video to watch and the ones to act on.
+    # A limit then only ever cuts off videos that are waiting.
+    _QUEUE_ORDER: ClassVar[ColumnElement[int]] = case(
+        {VideoStatus.DOWNLOADING: 0, VideoStatus.FAILED: 1},
+        value=VideoORM.status,
+        else_=2,
+    )
+
+    def list_queue(self, *, limit: int) -> QueuePage:
+        # Window functions run before the limit, so every row carries the
+        # totals of the whole queue, read in the same snapshot as the rows.
+        def total(status: VideoStatus) -> ColumnElement[int]:
+            return func.count().filter(VideoORM.status == status).over()
+
         query = (
             select(
                 VideoORM.id,
@@ -93,22 +107,22 @@ class VideoView:
                 VideoORM.source_url,
                 VideoORM.error,
                 VideoORM.created_at,
+                total(VideoStatus.PENDING).label("pending"),
+                total(VideoStatus.DOWNLOADING).label("downloading"),
+                total(VideoStatus.FAILED).label("failed"),
             )
             .where(VideoORM.status != VideoStatus.READY)
-            .order_by(VideoORM.id.desc())
-            .limit(limit + 1)
+            .order_by(self._QUEUE_ORDER, VideoORM.id.desc())
+            .limit(limit)
         )
-        if after is not None:
-            query = query.where(VideoORM.id < after)
 
         with self._session_factory() as session:
             rows = session.execute(query).all()
 
-        next_cursor = None
-        if len(rows) > limit:
-            rows = rows[:limit]
-            next_cursor = rows[-1].id
-
+        if not rows:
+            return QueuePage(
+                items=[], totals=QueueTotals(pending=0, downloading=0, failed=0)
+            )
         items = [
             QueueItem(
                 id=row.id,
@@ -119,7 +133,12 @@ class VideoView:
             )
             for row in rows
         ]
-        return QueuePage(items=items, next_cursor=next_cursor)
+        totals = QueueTotals(
+            pending=rows[0].pending,
+            downloading=rows[0].downloading,
+            failed=rows[0].failed,
+        )
+        return QueuePage(items=items, totals=totals)
 
     def saved_links(self, source_keys: list[str]) -> dict[str, SavedLink]:
         query = select(

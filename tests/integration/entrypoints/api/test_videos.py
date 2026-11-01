@@ -227,7 +227,7 @@ class TestListQueue:
 
         assert response.status_code == 200
         page = response.json()
-        assert page["next_cursor"] is None
+        assert page["totals"] == {"pending": 0, "downloading": 0, "failed": 1}
         [item] = page["items"]
         assert item["id"] == str(video.id)
         assert item["status"] == "FAILED"
@@ -240,33 +240,16 @@ class TestListQueue:
         response = client.get("/videos/queue")
 
         assert response.status_code == 200
-        assert response.json() == {"items": [], "next_cursor": None}
+        assert response.json() == {
+            "items": [],
+            "totals": {"pending": 0, "downloading": 0, "failed": 0},
+        }
 
     @pytest.mark.parametrize("limit", [0, 101])
     def test_rejects_a_limit_out_of_range(self, client: TestClient, limit: int) -> None:
         response = client.get("/videos/queue", params={"limit": limit})
 
         assert response.status_code == 422
-
-    def test_pages_through_with_cursor_and_limit(
-        self, client: TestClient, session: Session
-    ) -> None:
-        repository = PostgresVideoRepository(session)
-        older = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
-        newer = VideoFactory.build(source_url="https://youtu.be/dQw4w9WgXcQ")
-        repository.add(older)
-        repository.add(newer)
-        session.commit()
-
-        first = client.get("/videos/queue", params={"limit": 1}).json()
-        second = client.get(
-            "/videos/queue", params={"limit": 1, "after": first["next_cursor"]}
-        ).json()
-
-        assert [item["id"] for item in first["items"]] == [str(newer.id)]
-        assert first["next_cursor"] == str(newer.id)
-        assert [item["id"] for item in second["items"]] == [str(older.id)]
-        assert second["next_cursor"] is None
 
 
 class TestListVideos:

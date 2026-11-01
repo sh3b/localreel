@@ -116,7 +116,6 @@ def list_videos(
 @inject
 def list_queue(
     view: Annotated[VideoView, Depends(Provide[Container.video_view])],
-    after: UUID | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 24,
 ) -> QueuePage:
-    return view.list_queue(after=after, limit=limit)
+    return view.list_queue(limit=limit)

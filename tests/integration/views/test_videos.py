@@ -6,7 +6,7 @@ from localreel.adapters.orm import VideoORM
 from localreel.adapters.repository import PostgresVideoRepository
 from localreel.domain.models.video import Video
 from localreel.domain.value_objects import SourceMetadata, VideoSource, VideoStatus
-from localreel.views.dtos import SavedLink, VideoCard, VideoSort
+from localreel.views.dtos import QueueTotals, SavedLink, VideoCard, VideoSort
 from localreel.views.videos import VideoView
 from tests.factories import SourceMetadataFactory, VideoFactory
 
@@ -174,7 +174,7 @@ class TestListVideos:
 
 
 class TestListQueue:
-    def test_lists_every_video_that_is_not_ready_newest_first(
+    def test_lists_downloading_then_failed_then_waiting_and_counts_them(
         self, session: Session, video_view: VideoView
     ) -> None:
         repository = PostgresVideoRepository(session)
@@ -196,56 +196,57 @@ class TestListQueue:
             repository.save(video)
         session.commit()
 
-        items = video_view.list_queue(after=None, limit=24).items
+        page = video_view.list_queue(limit=24)
 
+        items = page.items
         assert [(item.id, item.status) for item in items] == [
-            (failed.id, VideoStatus.FAILED),
             (downloading.id, VideoStatus.DOWNLOADING),
+            (failed.id, VideoStatus.FAILED),
             (pending.id, VideoStatus.PENDING),
         ]
-        assert items[0].source_url == "https://youtu.be/9bZkp7q19f0"
-        assert items[0].error == "Video unavailable"
-        assert items[0].saved_at == session.get_one(VideoORM, failed.id).created_at
-        assert items[1].error is None
+        assert items[1].source_url == "https://youtu.be/9bZkp7q19f0"
+        assert items[1].error == "Video unavailable"
+        assert items[1].saved_at == session.get_one(VideoORM, failed.id).created_at
+        assert items[0].error is None
+        assert page.totals == QueueTotals(pending=1, downloading=1, failed=1)
 
-    def test_a_full_page_points_to_the_next_one(
+    def test_lists_waiting_videos_newest_first(
         self, session: Session, video_view: VideoView
     ) -> None:
-        self._pending(session, "https://youtu.be/jNQXAC9IVRw")
-        middle = self._pending(session, "https://youtu.be/dQw4w9WgXcQ")
+        older = self._pending(session, "https://youtu.be/jNQXAC9IVRw")
+        newer = self._pending(session, "https://youtu.be/dQw4w9WgXcQ")
+
+        items = video_view.list_queue(limit=24).items
+
+        assert [item.id for item in items] == [newer.id, older.id]
+
+    def test_the_limit_cuts_off_waiting_videos_not_a_failed_one(
+        self, session: Session, video_view: VideoView
+    ) -> None:
+        failed = self._failed(session, "https://youtu.be/jNQXAC9IVRw")
+        self._pending(session, "https://youtu.be/dQw4w9WgXcQ")
         newest = self._pending(session, "https://youtu.be/9bZkp7q19f0")
 
-        page = video_view.list_queue(after=None, limit=2)
+        page = video_view.list_queue(limit=2)
 
-        assert [item.id for item in page.items] == [newest.id, middle.id]
-        assert page.next_cursor == middle.id
-
-    def test_the_last_page_has_no_cursor_even_when_full(
-        self, session: Session, video_view: VideoView
-    ) -> None:
-        self._pending(session, "https://youtu.be/jNQXAC9IVRw")
-        self._pending(session, "https://youtu.be/dQw4w9WgXcQ")
-
-        page = video_view.list_queue(after=None, limit=2)
-
-        assert len(page.items) == 2
-        assert page.next_cursor is None
-
-    def test_continues_after_the_cursor(
-        self, session: Session, video_view: VideoView
-    ) -> None:
-        oldest = self._pending(session, "https://youtu.be/jNQXAC9IVRw")
-        middle = self._pending(session, "https://youtu.be/dQw4w9WgXcQ")
-        self._pending(session, "https://youtu.be/9bZkp7q19f0")
-
-        page = video_view.list_queue(after=middle.id, limit=24)
-
-        assert [item.id for item in page.items] == [oldest.id]
+        assert [item.id for item in page.items] == [failed.id, newest.id]
+        assert page.totals == QueueTotals(pending=2, downloading=0, failed=1)
 
     @staticmethod
     def _pending(session: Session, source_url: str) -> Video:
         video = VideoFactory.build(source_url=source_url)
         PostgresVideoRepository(session).add(video)
+        session.commit()
+        return video
+
+    @staticmethod
+    def _failed(session: Session, source_url: str) -> Video:
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory.build(source_url=source_url)
+        repository.add(video)
+        video.start_download()
+        video.mark_failed("Video unavailable")
+        repository.save(video)
         session.commit()
         return video
 
