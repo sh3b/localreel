@@ -6,7 +6,7 @@ from localreel.adapters.orm import VideoORM
 from localreel.adapters.repository import PostgresVideoRepository
 from localreel.domain.models.video import Video
 from localreel.domain.value_objects import SourceMetadata, VideoSource, VideoStatus
-from localreel.views.dtos import VideoCard, VideoSort
+from localreel.views.dtos import SavedLink, VideoCard, VideoSort
 from localreel.views.videos import VideoView
 from tests.factories import SourceMetadataFactory, VideoFactory
 
@@ -248,3 +248,24 @@ class TestListQueue:
         PostgresVideoRepository(session).add(video)
         session.commit()
         return video
+
+
+class TestSavedLinks:
+    def test_returns_the_saved_videos_by_source_key(
+        self, session: Session, video_view: VideoView
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
+        repository.add(video)
+        video.start_download()
+        video.mark_failed("Video unavailable")
+        repository.save(video)
+        session.commit()
+
+        saved = video_view.saved_links(["youtube:jNQXAC9IVRw", "youtube:dQw4w9WgXcQ"])
+
+        assert saved == {
+            "youtube:jNQXAC9IVRw": SavedLink(
+                id=video.id, status=VideoStatus.FAILED, error="Video unavailable"
+            )
+        }

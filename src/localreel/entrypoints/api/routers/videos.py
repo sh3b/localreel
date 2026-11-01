@@ -1,3 +1,4 @@
+from contextlib import suppress
 from typing import Annotated
 from uuid import UUID
 
@@ -6,14 +7,27 @@ from fastapi import APIRouter, Depends, Query, status
 
 from localreel.containers import Container
 from localreel.domain.commands import RetryVideo, SubmitURL
+from localreel.domain.exceptions import DuplicateVideo, UnsupportedSource
 from localreel.domain.unit_of_work import AbstractUnitOfWork
-from localreel.domain.value_objects import SourceURL
-from localreel.entrypoints.api.schemas.videos import SubmitURLRequest
+from localreel.domain.value_objects import SourceURL, VideoStatus
+from localreel.entrypoints.api.schemas.videos import (
+    SubmitOutcome,
+    SubmitResult,
+    SubmitURLRequest,
+    SubmitURLsRequest,
+)
 from localreel.service_layer.message_bus import MessageBus
-from localreel.views.dtos import QueuePage, VideoPage, VideoSort
+from localreel.views.dtos import QueuePage, SavedLink, VideoPage, VideoSort
 from localreel.views.videos import VideoView
 
 router = APIRouter()
+
+OUTCOME_BY_STATUS: dict[VideoStatus, SubmitOutcome] = {
+    VideoStatus.PENDING: "queued",
+    VideoStatus.DOWNLOADING: "queued",
+    VideoStatus.READY: "ready",
+    VideoStatus.FAILED: "failed",
+}
 
 
 @router.post("/videos", status_code=status.HTTP_202_ACCEPTED)
@@ -26,6 +40,54 @@ def submit_url(
     source_url = SourceURL.parse(body.url)
     with uow:
         bus.handle(SubmitURL(source_url=source_url))
+
+
+@router.post("/videos/batch")
+@inject
+def submit_urls(
+    body: SubmitURLsRequest,
+    uow: Annotated[AbstractUnitOfWork, Depends(Provide[Container.uow])],
+    bus: Annotated[MessageBus, Depends(Provide[Container.message_bus])],
+    view: Annotated[VideoView, Depends(Provide[Container.video_view])],
+) -> list[SubmitResult]:
+    # 1. Parse: split the links into supported and unsupported.
+    sources: dict[str, SourceURL] = {}
+    unsupported: dict[str, str] = {}
+    for url in body.urls:
+        try:
+            sources[url] = SourceURL.parse(url)
+        except UnsupportedSource as exc:
+            unsupported[url] = str(exc)
+
+    # 2. Save: one transaction per link, so one bad link never undoes the others.
+    for source_url in sources.values():
+        # A lost race means another request saved the link; the read reports it.
+        with suppress(DuplicateVideo), uow:
+            bus.handle(SubmitURL(source_url=source_url))
+
+    # 3. Read what each saved link is now.
+    saved: dict[str, SavedLink] = view.saved_links(
+        [source_url.key for source_url in sources.values()]
+    )
+
+    # 4. Answer every link, in the order sent.
+    results = []
+    for url in body.urls:
+        if url in unsupported:
+            results.append(
+                SubmitResult(url=url, result="unsupported", reason=unsupported[url])
+            )
+            continue
+        link = saved[sources[url].key]
+        results.append(
+            SubmitResult(
+                url=url,
+                result=OUTCOME_BY_STATUS[link.status],
+                video_id=link.id,
+                reason=link.error,
+            )
+        )
+    return results
 
 
 @router.post("/videos/{video_id}/retry", status_code=status.HTTP_202_ACCEPTED)

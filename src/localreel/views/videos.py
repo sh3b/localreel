@@ -9,6 +9,7 @@ from localreel.domain.value_objects import VideoSource, VideoStatus
 from localreel.views.dtos import (
     QueueItem,
     QueuePage,
+    SavedLink,
     VideoCard,
     VideoPage,
     VideoSort,
@@ -119,3 +120,16 @@ class VideoView:
             for row in rows
         ]
         return QueuePage(items=items, next_cursor=next_cursor)
+
+    def saved_links(self, source_keys: list[str]) -> dict[str, SavedLink]:
+        query = select(
+            VideoORM.source_key, VideoORM.id, VideoORM.status, VideoORM.error
+        ).where(VideoORM.source_key.in_(source_keys))
+
+        with self._session_factory() as session:
+            rows = session.execute(query).all()
+
+        return {
+            row.source_key: SavedLink(id=row.id, status=row.status, error=row.error)
+            for row in rows
+        }

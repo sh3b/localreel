@@ -40,3 +40,9 @@ class QueueItem(BaseModel):
 class QueuePage(BaseModel):
     items: list[QueueItem]
     next_cursor: UUID | None
+
+
+class SavedLink(BaseModel):
+    id: UUID
+    status: VideoStatus
+    error: str | None
