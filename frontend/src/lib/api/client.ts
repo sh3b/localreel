@@ -9,3 +9,6 @@ export type VideoStatus = components['schemas']['VideoStatus'];
 export type QueueItem = components['schemas']['QueueItem'];
 export type QueuePage = components['schemas']['QueuePage'];
 export type SubmitResult = components['schemas']['SubmitResult'];
+export type VideoCard = components['schemas']['VideoCard'];
+export type VideoPage = components['schemas']['VideoPage'];
+export type VideoSort = components['schemas']['VideoSort'];

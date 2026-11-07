@@ -5,6 +5,7 @@
 @theme inline {
 	--color-bg: var(--lr-bg);
 	--color-surface: var(--lr-surface);
+	--color-media: var(--lr-media);
 	--color-line: var(--lr-line);
 	--color-line-strong: var(--lr-line-strong);
 	--color-fg: var(--lr-fg);
@@ -16,12 +17,18 @@
 	--color-ok: var(--lr-ok);
 	--color-warn: var(--lr-warn);
 	--color-danger: var(--lr-danger);
+	--color-scrim: var(--lr-scrim);
+	--color-on-media: var(--lr-on-media);
+	--color-on-media-muted: var(--lr-on-media-muted);
+	--color-media-accent: var(--lr-media-accent);
 
 	--font-ui: var(--lr-font-ui);
 	--font-title: var(--lr-font-title);
 	--text-ui: var(--lr-text-ui);
+	--text-label: var(--lr-text-label);
 
 	--spacing-bar: var(--lr-bar-height);
+	--spacing-progress: var(--lr-progress-height);
 }
 
 @layer base {

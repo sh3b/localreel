@@ -1,5 +1,6 @@
 import { SvelteSet } from 'svelte/reactivity';
 import { api, type QueuePage, type SubmitResult } from '#lib/api/client.ts';
+import { withTimeout } from '#lib/api/timeout.ts';
 
 export type QueueServer = {
 	queue: (signal: AbortSignal) => Promise<QueuePage>;
@@ -40,21 +41,9 @@ const fromApi: QueueServer = {
 	}
 };
 
+// Polls wait for the last refresh, so one the server never answered would
+// stop them; withTimeout gives every request up after a while.
 const POLL_MS = 3000;
-// A request the server never answers would leave its button busy, or stop
-// the polling (polls wait for the last refresh), for good. Every request is
-// given up after this long instead, and fails like any other.
-const REQUEST_TIMEOUT_MS = 10_000;
-
-async function withTimeout<T>(request: (signal: AbortSignal) => Promise<T>): Promise<T> {
-	const giveUp = new AbortController();
-	const timer = setTimeout(() => giveUp.abort(), REQUEST_TIMEOUT_MS);
-	try {
-		return await request(giveUp.signal);
-	} finally {
-		clearTimeout(timer);
-	}
-}
 
 // The Add page's side of the server: sending links, and the videos that are
 // not ready yet, kept fresh by polling. A request that fails, with an error or
