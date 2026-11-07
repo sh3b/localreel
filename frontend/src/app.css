@@ -25,10 +25,12 @@
 	--font-ui: var(--lr-font-ui);
 	--font-title: var(--lr-font-title);
 	--text-ui: var(--lr-text-ui);
+	--text-caption: var(--lr-text-caption);
 	--text-label: var(--lr-text-label);
 
 	--spacing-bar: var(--lr-bar-height);
 	--spacing-progress: var(--lr-progress-height);
+	--spacing-tile: var(--lr-tile-gap);
 }
 
 @layer base {

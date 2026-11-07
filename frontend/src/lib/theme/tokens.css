@@ -44,11 +44,13 @@
 	--lr-font-ui: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
 	--lr-font-title: system-ui, -apple-system, 'Segoe UI', sans-serif;
 	--lr-text-ui: 13px;
+	--lr-text-caption: 11px;
 	--lr-text-label: 10px;
 
 	/* Rhythm */
 	--lr-bar-height: 40px;
 	--lr-progress-height: 3px;
+	--lr-tile-gap: 14px;
 }
 
 [data-theme='tool-light'] {
