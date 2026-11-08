@@ -5,10 +5,18 @@ from uuid import uuid7
 import pytest
 from yt_dlp import YoutubeDL
 from yt_dlp.options import create_parser
-from yt_dlp.utils import DownloadError
+from yt_dlp.utils import DownloadError, ExtractorError
 
 from localreel.adapters.downloader import YtDlpDownloader
 from localreel.domain.downloader import DownloadResult
+from localreel.domain.exceptions import DownloadFailed
+
+
+def _raise(error: Exception) -> Any:
+    def extract_info(*_: Any, **__: Any) -> Any:
+        raise error
+
+    return extract_info
 
 
 class TestYtDlpDownloader:
@@ -38,10 +46,43 @@ class TestYtDlpDownloader:
         assert options["fragment_retries"] == command_defaults["fragment_retries"]
 
     def test_refuses_a_url_no_allowed_extractor_handles(self, tmp_path: Path) -> None:
-        with pytest.raises(DownloadError, match="No suitable extractor"):
+        with pytest.raises(DownloadFailed, match="No suitable extractor"):
             YtDlpDownloader(tmp_path).download(
                 url="http://169.254.169.254/latest/meta-data", video_id=uuid7()
             )
+
+    def test_a_refusal_gives_the_reason_without_yt_dlp_prefixes(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        cause = ExtractorError(
+            "This video is unavailable", video_id="xxxxxxxxxx0", ie="youtube"
+        )
+        error = DownloadError(f"ERROR: {cause}", exc_info=(type(cause), cause, None))
+        monkeypatch.setattr(YoutubeDL, "extract_info", _raise(error))
+
+        with pytest.raises(DownloadFailed) as raised:
+            YtDlpDownloader(tmp_path).download(
+                url="https://youtu.be/xxxxxxxxxx0", video_id=uuid7()
+            )
+
+        assert str(raised.value) == "This video is unavailable"
+
+    def test_a_failed_download_gives_the_message_without_error_prefix(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        error = DownloadError(
+            "ERROR: unable to download video data: HTTP Error 403: Forbidden"
+        )
+        monkeypatch.setattr(YoutubeDL, "extract_info", _raise(error))
+
+        with pytest.raises(DownloadFailed) as raised:
+            YtDlpDownloader(tmp_path).download(
+                url="https://youtu.be/jNQXAC9IVRw", video_id=uuid7()
+            )
+
+        assert str(raised.value) == (
+            "unable to download video data: HTTP Error 403: Forbidden"
+        )
 
     def test_discard_deletes_every_file_of_the_video_and_only_those(
         self, tmp_path: Path

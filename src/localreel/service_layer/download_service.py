@@ -8,7 +8,7 @@ from localreel.domain.commands import (
     StartDownload,
 )
 from localreel.domain.downloader import AbstractDownloader
-from localreel.domain.exceptions import InvalidStatusTransition
+from localreel.domain.exceptions import DownloadFailed, InvalidStatusTransition
 from localreel.domain.unit_of_work import AbstractUnitOfWork
 from localreel.service_layer.message_bus import MessageBus
 
@@ -68,6 +68,11 @@ class DownloadService:
         command: MarkReady | MarkFailed
         try:
             result = self._downloader.download(url=source_url, video_id=video_id)
+        except DownloadFailed as exc:
+            # Expected: the site refused the video (unavailable, private,
+            # blocked). A traceback for it would only bury real errors.
+            logger.warning("download failed for video %s: %s", video_id, exc)
+            command = MarkFailed(video_id=video_id, reason=str(exc))
         except Exception as exc:
             logger.exception("download failed for video %s", video_id)
             command = MarkFailed(video_id=video_id, reason=str(exc))

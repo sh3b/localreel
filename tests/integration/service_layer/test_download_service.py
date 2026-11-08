@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 import pytest
@@ -8,6 +9,7 @@ from localreel.adapters.repository import PostgresVideoRepository
 from localreel.containers import Container
 from localreel.domain.commands import RemoveVideo, StartDownload
 from localreel.domain.downloader import AbstractDownloader, DownloadResult
+from localreel.domain.exceptions import DownloadFailed
 from localreel.domain.value_objects import VideoStatus
 from localreel.service_layer.download_service import DownloadService
 from tests.factories import SourceMetadataFactory, VideoFactory
@@ -56,11 +58,14 @@ class TestDownloadService:
         assert row.source_title == "Me at the zoo"
         assert downloader.discarded == []
 
-    def test_marks_the_video_failed_when_the_download_raises(
-        self, container: Container, session: Session
+    def test_a_refused_download_fails_the_video_with_a_one_line_log(
+        self,
+        container: Container,
+        session: Session,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         video_id = self._pending_video(container)
-        downloader = FakeDownloader(error=RuntimeError("Video unavailable"))
+        downloader = FakeDownloader(error=DownloadFailed("Video unavailable"))
 
         self._service(container, downloader).download_next()
 
@@ -68,6 +73,26 @@ class TestDownloadService:
         assert row.status is VideoStatus.FAILED
         assert row.error == "Video unavailable"
         assert downloader.discarded == [video_id]
+        [record] = [r for r in caplog.records if r.levelno >= logging.WARNING]
+        assert record.levelno == logging.WARNING
+        assert record.exc_info is None
+
+    def test_an_unexpected_error_fails_the_video_and_logs_its_traceback(
+        self,
+        container: Container,
+        session: Session,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        video_id = self._pending_video(container)
+        downloader = FakeDownloader(error=RuntimeError("disk full"))
+
+        self._service(container, downloader).download_next()
+
+        row = session.get_one(VideoORM, video_id)
+        assert (row.status, row.error) == (VideoStatus.FAILED, "disk full")
+        [record] = [r for r in caplog.records if r.levelno >= logging.WARNING]
+        assert record.levelno == logging.ERROR
+        assert record.exc_info is not None
 
     def test_skips_a_video_another_worker_already_took(
         self,

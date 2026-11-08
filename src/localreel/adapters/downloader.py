@@ -3,8 +3,10 @@ from typing import Any, ClassVar
 from uuid import UUID
 
 from yt_dlp import YoutubeDL
+from yt_dlp.utils import DownloadError, ExtractorError
 
 from localreel.domain.downloader import AbstractDownloader, DownloadResult
+from localreel.domain.exceptions import DownloadFailed
 from localreel.domain.value_objects import SourceMetadata
 
 
@@ -27,7 +29,16 @@ class YtDlpDownloader(AbstractDownloader):
 
     def download(self, *, url: str, video_id: UUID) -> DownloadResult:
         with YoutubeDL(self._options(video_id)) as ydl:
-            info = ydl.sanitize_info(ydl.extract_info(url, download=True))
+            try:
+                info = ydl.sanitize_info(ydl.extract_info(url, download=True))
+            except DownloadError as exc:
+                # yt-dlp's message reads "ERROR: [youtube] <id>: <reason>"; the
+                # extractor's own error keeps the reason alone.
+                reason = str(exc).removeprefix("ERROR: ")
+                cause = exc.exc_info[1] if exc.exc_info else None
+                if isinstance(cause, ExtractorError):
+                    reason = cause.orig_msg
+                raise DownloadFailed(reason) from exc
         return self._result(info)
 
     def discard(self, *, video_id: UUID) -> None:

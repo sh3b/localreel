@@ -16,3 +16,7 @@ class VideoNotFound(DomainError):
 
 class InvalidStatusTransition(DomainError):
     """The video's current status does not allow this step."""
+
+
+class DownloadFailed(DomainError):
+    """The site refused the video: unavailable, private, blocked."""

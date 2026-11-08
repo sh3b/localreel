@@ -15,7 +15,8 @@ class DownloadResult:
 class AbstractDownloader(ABC):
     @abstractmethod
     def download(self, *, url: str, video_id: UUID) -> DownloadResult:
-        """Downloads the video; paths are relative to the downloads directory."""
+        """Downloads the video; paths are relative to the downloads directory.
+        Raises DownloadFailed when the site refuses the video."""
         raise NotImplementedError
 
     @abstractmethod
