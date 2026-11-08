@@ -15,6 +15,7 @@ class Worker:
     def run(self) -> None:
         self._service.reset_interrupted_downloads()
         while True:
+            self._service.purge_removed()
             if not self._service.download_next():
                 time.sleep(self._poll_interval_sec)
 

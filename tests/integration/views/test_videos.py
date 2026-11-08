@@ -211,6 +211,22 @@ class TestListQueue:
         assert items[0].error is None
         assert page.totals == QueueTotals(pending=1, downloading=1, failed=1)
 
+    def test_leaves_out_removed_videos(
+        self, session: Session, video_view: VideoView
+    ) -> None:
+        kept = self._pending(session, "https://youtu.be/jNQXAC9IVRw")
+        removed = self._pending(session, "https://youtu.be/dQw4w9WgXcQ")
+        repository = PostgresVideoRepository(session)
+        video = repository.get(removed.id, lock=False)
+        video.remove()
+        repository.save(video)
+        session.commit()
+
+        page = video_view.list_queue(limit=24)
+
+        assert [item.id for item in page.items] == [kept.id]
+        assert page.totals == QueueTotals(pending=1, downloading=0, failed=0)
+
     def test_lists_waiting_videos_newest_first(
         self, session: Session, video_view: VideoView
     ) -> None:
@@ -269,5 +285,37 @@ class TestSavedLinks:
         assert saved == {
             "youtube:jNQXAC9IVRw": SavedLink(
                 id=video.id, status=VideoStatus.FAILED, error="Video unavailable"
+            )
+        }
+
+    def test_leaves_out_a_removed_video(
+        self, session: Session, video_view: VideoView
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        removed = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
+        repository.add(removed)
+        removed.remove()
+        repository.save(removed)
+        session.commit()
+
+        assert video_view.saved_links(["youtube:jNQXAC9IVRw"]) == {}
+
+    def test_skips_a_removed_video_and_finds_the_link_added_again(
+        self, session: Session, video_view: VideoView
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        removed = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
+        repository.add(removed)
+        removed.remove()
+        repository.save(removed)
+        again = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
+        repository.add(again)
+        session.commit()
+
+        saved = video_view.saved_links(["youtube:jNQXAC9IVRw"])
+
+        assert saved == {
+            "youtube:jNQXAC9IVRw": SavedLink(
+                id=again.id, status=VideoStatus.PENDING, error=None
             )
         }

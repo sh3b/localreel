@@ -7,17 +7,19 @@ from localreel.adapters.unit_of_work import PostgresUnitOfWork
 from localreel.domain.commands import (
     MarkFailed,
     MarkReady,
+    PurgeVideo,
     RemoveVideo,
     ResetDownload,
     RetryVideo,
     StartDownload,
     SubmitURL,
 )
-from localreel.domain.events import VideoFailed, VideoRemoved
+from localreel.domain.events import VideoFailed
 from localreel.service_layer.download_service import DownloadService
 from localreel.service_layer.handlers.commands import (
     MarkFailedHandler,
     MarkReadyHandler,
+    PurgeVideoHandler,
     RemoveVideoHandler,
     ResetDownloadHandler,
     RetryVideoHandler,
@@ -60,14 +62,12 @@ class Container(containers.DeclarativeContainer):
                 MarkFailed: providers.Factory(MarkFailedHandler, uow=uow),
                 RetryVideo: providers.Factory(RetryVideoHandler, uow=uow),
                 RemoveVideo: providers.Factory(RemoveVideoHandler, uow=uow),
+                PurgeVideo: providers.Factory(PurgeVideoHandler, uow=uow),
             }
         ),
         event_handlers=providers.Dict(
             {
                 VideoFailed: providers.List(
-                    providers.Factory(DiscardFilesHandler, downloader=downloader)
-                ),
-                VideoRemoved: providers.List(
                     providers.Factory(DiscardFilesHandler, downloader=downloader)
                 ),
             }

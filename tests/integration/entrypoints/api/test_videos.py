@@ -77,6 +77,22 @@ class TestSubmitURLs:
         rows = session.scalars(select(VideoORM)).all()
         assert {str(row.id) for row in rows} == {r["video_id"] for r in results}
 
+    def test_saves_a_link_again_after_its_video_was_removed(
+        self, client: TestClient, session: Session
+    ) -> None:
+        removed = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
+        PostgresVideoRepository(session).add(removed)
+        session.commit()
+        client.delete(f"/videos/{removed.id}")
+
+        response = client.post(
+            "/videos/batch", json={"urls": ["https://youtu.be/jNQXAC9IVRw"]}
+        )
+
+        [result] = response.json()
+        assert result["result"] == "queued"
+        assert result["video_id"] != str(removed.id)
+
     @pytest.mark.parametrize(
         ("status", "result"),
         [
@@ -212,7 +228,7 @@ class TestRetryVideo:
 
 
 class TestRemoveVideo:
-    def test_returns_204_and_deletes_a_failed_video(
+    def test_returns_204_and_marks_a_failed_video_removed(
         self, client: TestClient, session: Session
     ) -> None:
         repository = PostgresVideoRepository(session)
@@ -227,7 +243,19 @@ class TestRemoveVideo:
 
         assert response.status_code == 204
         session.expire_all()
-        assert session.get(VideoORM, video.id) is None
+        assert session.get_one(VideoORM, video.id).status is VideoStatus.REMOVED
+
+    def test_removing_twice_returns_204(
+        self, client: TestClient, session: Session
+    ) -> None:
+        video = VideoFactory.build()
+        PostgresVideoRepository(session).add(video)
+        session.commit()
+        client.delete(f"/videos/{video.id}")
+
+        response = client.delete(f"/videos/{video.id}")
+
+        assert response.status_code == 204
 
     def test_an_unknown_video_returns_404(self, client: TestClient) -> None:
         video_id = uuid7()
@@ -251,8 +279,8 @@ class TestRemoveVideo:
 
         assert response.status_code == 409
         assert response.json() == {
-            "detail": f"Video {video.id} is DOWNLOADING; only a PENDING or FAILED "
-            "video can be removed"
+            "detail": f"Video {video.id} is DOWNLOADING; only a PENDING, FAILED "
+            "or READY video can be removed"
         }
 
 

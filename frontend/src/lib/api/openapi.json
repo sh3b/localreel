@@ -286,7 +286,13 @@
             "title": "Id"
           },
           "status": {
-            "$ref": "#/components/schemas/VideoStatus"
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "DOWNLOADING",
+              "FAILED"
+            ],
+            "title": "Status"
           },
           "source_url": {
             "type": "string",
@@ -632,16 +638,6 @@
           "FACEBOOK"
         ],
         "title": "VideoSource"
-      },
-      "VideoStatus": {
-        "type": "string",
-        "enum": [
-          "PENDING",
-          "DOWNLOADING",
-          "READY",
-          "FAILED"
-        ],
-        "title": "VideoStatus"
       }
     }
   }

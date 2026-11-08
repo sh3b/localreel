@@ -1,4 +1,4 @@
-from uuid import UUID, uuid7
+from uuid import UUID
 
 import pytest
 from sqlalchemy.orm import Session
@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from localreel.adapters.orm import VideoORM
 from localreel.adapters.repository import PostgresVideoRepository
 from localreel.containers import Container
-from localreel.domain.commands import StartDownload
+from localreel.domain.commands import RemoveVideo, StartDownload
 from localreel.domain.downloader import AbstractDownloader, DownloadResult
 from localreel.domain.value_objects import VideoStatus
 from localreel.service_layer.download_service import DownloadService
@@ -31,6 +31,11 @@ class FakeDownloader(AbstractDownloader):
 
     def discard(self, *, video_id: UUID) -> None:
         self.discarded.append(video_id)
+
+
+class UndeletableDownloader(FakeDownloader):
+    def discard(self, *, video_id: UUID) -> None:
+        raise PermissionError("Permission denied")
 
 
 class TestDownloadService:
@@ -84,19 +89,40 @@ class TestDownloadService:
         assert downloader.downloaded == []
         assert session.get_one(VideoORM, video.id).status is VideoStatus.DOWNLOADING
 
-    def test_skips_a_video_removed_after_the_pick(
-        self, container: Container, monkeypatch: pytest.MonkeyPatch
+    def test_purge_deletes_the_files_then_the_row(
+        self, container: Container, session: Session
     ) -> None:
-        removed_id = uuid7()
-        monkeypatch.setattr(
-            PostgresVideoRepository, "next_pending", lambda _: removed_id
-        )
+        video_id = self._pending_video(container)
+        with container.uow():
+            container.message_bus().handle(RemoveVideo(video_id=video_id))
         downloader = FakeDownloader()
 
-        did_work = self._service(container, downloader).download_next()
+        self._service(container, downloader).purge_removed()
 
-        assert did_work is True
-        assert downloader.downloaded == []
+        assert downloader.discarded == [video_id]
+        assert session.get(VideoORM, video_id) is None
+
+    def test_purge_keeps_the_row_when_the_files_cannot_be_deleted(
+        self, container: Container, session: Session
+    ) -> None:
+        video_id = self._pending_video(container)
+        with container.uow():
+            container.message_bus().handle(RemoveVideo(video_id=video_id))
+
+        self._service(container, UndeletableDownloader()).purge_removed()
+
+        assert session.get_one(VideoORM, video_id).status is VideoStatus.REMOVED
+
+    def test_purge_leaves_videos_that_are_not_removed(
+        self, container: Container, session: Session
+    ) -> None:
+        video_id = self._pending_video(container)
+        downloader = FakeDownloader()
+
+        self._service(container, downloader).purge_removed()
+
+        assert downloader.discarded == []
+        assert session.get_one(VideoORM, video_id).status is VideoStatus.PENDING
 
     def test_reset_puts_interrupted_downloads_back_to_pending(
         self, container: Container, session: Session

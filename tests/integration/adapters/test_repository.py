@@ -36,6 +36,28 @@ class TestPostgresVideoRepository:
                 VideoFactory.build(source_url="https://youtube.com/watch?v=jNQXAC9IVRw")
             )
 
+    def test_add_accepts_a_link_whose_video_was_removed(self, session: Session) -> None:
+        repository = PostgresVideoRepository(session)
+        removed = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
+        repository.add(removed)
+        removed.remove()
+        repository.save(removed)
+        again = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
+
+        repository.add(again)
+
+        assert repository.get(again.id, lock=False).status is VideoStatus.PENDING
+
+    def test_exists_ignores_a_removed_video(self, session: Session) -> None:
+        repository = PostgresVideoRepository(session)
+        video = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
+        repository.add(video)
+        video.remove()
+        repository.save(video)
+        session.flush()
+
+        assert not repository.exists(source_key="youtube:jNQXAC9IVRw")
+
     def test_exists_finds_a_video_by_its_source_key(self, session: Session) -> None:
         repository = PostgresVideoRepository(session)
         repository.add(VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw"))
@@ -114,3 +136,14 @@ class TestPostgresVideoRepository:
             repository.save(video)
 
         assert set(repository.downloading()) == {first.id, second.id}
+
+    def test_removed_returns_every_removed_video(self, session: Session) -> None:
+        repository = PostgresVideoRepository(session)
+        kept = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
+        removed = VideoFactory.build(source_url="https://youtu.be/dQw4w9WgXcQ")
+        for video in (kept, removed):
+            repository.add(video)
+        removed.remove()
+        repository.save(removed)
+
+        assert repository.removed() == [removed.id]

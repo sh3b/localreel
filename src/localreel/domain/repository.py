@@ -10,6 +10,7 @@ class AbstractVideoRepository(ABC):
 
     @abstractmethod
     def exists(self, *, source_key: str) -> bool:
+        """Whether a video that is not REMOVED has this source key."""
         raise NotImplementedError
 
     @abstractmethod
@@ -31,4 +32,9 @@ class AbstractVideoRepository(ABC):
     @abstractmethod
     def downloading(self) -> list[UUID]:
         """The ids of every DOWNLOADING video."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def removed(self) -> list[UUID]:
+        """The ids of every REMOVED video."""
         raise NotImplementedError

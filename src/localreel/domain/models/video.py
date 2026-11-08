@@ -1,7 +1,7 @@
 from typing import ClassVar
 from uuid import UUID
 
-from localreel.domain.events import VideoFailed, VideoRemoved
+from localreel.domain.events import VideoFailed
 from localreel.domain.exceptions import InvalidStatusTransition
 from localreel.domain.messages import Event
 from localreel.domain.value_objects import (
@@ -16,7 +16,7 @@ class Video:
     _MAX_ATTEMPTS: ClassVar[int] = 3
     # A downloading video is the worker's until it is ready or failed.
     _REMOVABLE: ClassVar[frozenset[VideoStatus]] = frozenset(
-        {VideoStatus.PENDING, VideoStatus.FAILED}
+        {VideoStatus.PENDING, VideoStatus.FAILED, VideoStatus.READY}
     )
 
     def __init__(
@@ -44,7 +44,7 @@ class Video:
         self.source_metadata = source_metadata
         self.error = error
 
-        self.removed = False
+        self.purged = False
         self.events: list[Event] = []
 
     @classmethod
@@ -93,14 +93,21 @@ class Video:
         self.error = None
 
     def remove(self) -> None:
+        if self.status is VideoStatus.REMOVED:
+            return
         if self.status not in self._REMOVABLE:
             raise InvalidStatusTransition(
-                f"Video {self.id} is {self.status}; only a PENDING or FAILED "
-                "video can be removed"
+                f"Video {self.id} is {self.status}; only a PENDING, FAILED or "
+                "READY video can be removed"
             )
-        self.removed = True
-        # A PENDING video can hold the part files of an interrupted download.
-        self.events.append(VideoRemoved(video_id=self.id))
+        self.status = VideoStatus.REMOVED
+
+    def purge(self) -> None:
+        if self.status is not VideoStatus.REMOVED:
+            raise InvalidStatusTransition(
+                f"Video {self.id} is {self.status}; only a REMOVED video can be purged"
+            )
+        self.purged = True
 
     def collect_events(self) -> list[Event]:
         # Empty the list on handover: the unit of work collects after every

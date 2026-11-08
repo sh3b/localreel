@@ -12,6 +12,7 @@ class VideoStatus(StrEnum):
     DOWNLOADING = "DOWNLOADING"
     READY = "READY"
     FAILED = "FAILED"
+    REMOVED = "REMOVED"
 
 
 class VideoSource(StrEnum):

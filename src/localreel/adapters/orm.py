@@ -6,10 +6,11 @@ from sqlalchemy import (
     BigInteger,
     DateTime,
     Enum,
+    Index,
     Integer,
     Text,
-    UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -26,7 +27,16 @@ class Base(DeclarativeBase):
 # length keeps a longer new value from needing a migration.
 class VideoORM(Base):
     __tablename__ = "videos"
-    __table_args__ = (UniqueConstraint("source_key", name="uq_videos_source_key"),)
+    # One live video per link. A REMOVED one waiting for the worker's cleanup
+    # must not block the same link from being added again.
+    __table_args__ = (
+        Index(
+            "uq_videos_source_key",
+            "source_key",
+            unique=True,
+            postgresql_where=text("status <> 'REMOVED'"),
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True)
     source: Mapped[VideoSource] = mapped_column(

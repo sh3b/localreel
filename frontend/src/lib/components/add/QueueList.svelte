@@ -31,7 +31,7 @@
 			class="@lg:grid @lg:grid-cols-[minmax(0,1fr)_auto_auto]"
 		>
 			{#each items as item (item.id)}
-				{@const info = item.status === 'READY' ? null : STATUS_LABEL[item.status]}
+				{@const info = STATUS_LABEL[item.status]}
 				{@const failed = item.status === 'FAILED'}
 				{@const busy = retrying.has(item.id) || removing.has(item.id)}
 				<li
@@ -39,13 +39,13 @@
 				>
 					<p class="truncate text-fg-strong">{item.source_url}</p>
 					<p class={['justify-self-end', failed ? 'text-danger' : 'text-accent']}>
-						{info?.label}
+						{info.label}
 					</p>
 					{#if failed}
 						<p class="col-span-full leading-relaxed text-danger">
 							{item.error ?? 'The download failed.'}
 						</p>
-					{:else if info?.note}
+					{:else if info.note}
 						<p class="col-span-full leading-relaxed text-faint">{info.note}</p>
 					{/if}
 					{#if item.status !== 'DOWNLOADING'}

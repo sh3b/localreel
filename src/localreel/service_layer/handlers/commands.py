@@ -4,6 +4,7 @@ from uuid import uuid7
 from localreel.domain.commands import (
     MarkFailed,
     MarkReady,
+    PurgeVideo,
     RemoveVideo,
     ResetDownload,
     RetryVideo,
@@ -96,3 +97,12 @@ class RemoveVideoHandler:
     def __call__(self, cmd: RemoveVideo) -> None:
         video = self._uow.videos.get(cmd.video_id, lock=True)
         video.remove()
+
+
+class PurgeVideoHandler:
+    def __init__(self, uow: AbstractUnitOfWork) -> None:
+        self._uow = uow
+
+    def __call__(self, cmd: PurgeVideo) -> None:
+        video = self._uow.videos.get(cmd.video_id, lock=True)
+        video.purge()

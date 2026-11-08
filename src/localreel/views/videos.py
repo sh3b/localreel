@@ -1,4 +1,4 @@
-from typing import ClassVar
+from typing import ClassVar, get_args
 from uuid import UUID
 
 from sqlalchemy import ColumnElement, case, func, select
@@ -9,6 +9,7 @@ from localreel.domain.value_objects import VideoSource, VideoStatus
 from localreel.views.dtos import (
     QueueItem,
     QueuePage,
+    QueueStatus,
     QueueTotals,
     SavedLink,
     VideoCard,
@@ -115,7 +116,7 @@ class VideoView:
                 total(VideoStatus.DOWNLOADING).label("downloading"),
                 total(VideoStatus.FAILED).label("failed"),
             )
-            .where(VideoORM.status != VideoStatus.READY)
+            .where(VideoORM.status.in_(get_args(QueueStatus)))
             .order_by(self._QUEUE_ORDER, VideoORM.id.desc())
             .limit(limit)
         )
@@ -147,7 +148,11 @@ class VideoView:
     def saved_links(self, source_keys: list[str]) -> dict[str, SavedLink]:
         query = select(
             VideoORM.source_key, VideoORM.id, VideoORM.status, VideoORM.error
-        ).where(VideoORM.source_key.in_(source_keys))
+        ).where(
+            VideoORM.source_key.in_(source_keys),
+            # A REMOVED video waiting for cleanup is not what the link is now.
+            VideoORM.status != VideoStatus.REMOVED,
+        )
 
         with self._session_factory() as session:
             rows = session.execute(query).all()

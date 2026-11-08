@@ -2,7 +2,7 @@ from uuid import uuid7
 
 import pytest
 
-from localreel.domain.events import VideoFailed, VideoRemoved
+from localreel.domain.events import VideoFailed
 from localreel.domain.exceptions import InvalidStatusTransition
 from localreel.domain.models.video import Video
 from localreel.domain.value_objects import SourceURL, VideoSource, VideoStatus
@@ -163,8 +163,8 @@ class TestRemove:
 
         video.remove()
 
-        assert video.removed is True
-        assert video.events == [VideoRemoved(video.id)]
+        assert video.status is VideoStatus.REMOVED
+        assert video.events == []
 
     def test_removes_a_failed_video(self) -> None:
         video = VideoFactory.build()
@@ -174,20 +174,9 @@ class TestRemove:
 
         video.remove()
 
-        assert video.removed is True
-        assert video.events == [VideoRemoved(video.id)]
+        assert video.status is VideoStatus.REMOVED
 
-    def test_rejects_a_downloading_video(self) -> None:
-        video = VideoFactory.build()
-        video.start_download()
-
-        with pytest.raises(InvalidStatusTransition):
-            video.remove()
-
-        assert video.removed is False
-        assert video.events == []
-
-    def test_rejects_a_ready_video(self) -> None:
+    def test_removes_a_ready_video(self) -> None:
         video = VideoFactory.build()
         video.start_download()
         video.mark_ready(
@@ -196,11 +185,44 @@ class TestRemove:
             metadata=SourceMetadataFactory.build(),
         )
 
+        video.remove()
+
+        assert video.status is VideoStatus.REMOVED
+
+    def test_removing_a_removed_video_changes_nothing(self) -> None:
+        video = VideoFactory.build()
+        video.remove()
+
+        video.remove()
+
+        assert video.status is VideoStatus.REMOVED
+
+    def test_rejects_a_downloading_video(self) -> None:
+        video = VideoFactory.build()
+        video.start_download()
+
         with pytest.raises(InvalidStatusTransition):
             video.remove()
 
-        assert video.removed is False
-        assert video.events == []
+        assert video.status is VideoStatus.DOWNLOADING
+
+
+class TestPurge:
+    def test_marks_a_removed_video_for_deletion(self) -> None:
+        video = VideoFactory.build()
+        video.remove()
+
+        video.purge()
+
+        assert video.purged is True
+
+    def test_rejects_a_video_that_is_not_removed(self) -> None:
+        video = VideoFactory.build()
+
+        with pytest.raises(InvalidStatusTransition):
+            video.purge()
+
+        assert video.purged is False
 
 
 class TestCollectEvents:

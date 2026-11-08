@@ -10,6 +10,7 @@ from localreel.containers import Container
 from localreel.domain.commands import (
     MarkFailed,
     MarkReady,
+    PurgeVideo,
     RemoveVideo,
     ResetDownload,
     RetryVideo,
@@ -146,17 +147,38 @@ class TestDownloadCommands:
         assert row.attempts == 0
         assert row.error is None
 
-    def test_remove_video_deletes_the_row_and_discards_its_files(
+    def test_remove_video_hides_a_ready_video_and_keeps_its_files(
         self, container: Container, session: Session
     ) -> None:
-        video_id = self._pending_video(container)
+        video_id = self._downloading_video(container)
+        with container.uow():
+            container.message_bus().handle(
+                MarkReady(
+                    video_id=video_id,
+                    file_path=f"{video_id}.webm",
+                    thumbnail_path=None,
+                    metadata=SourceMetadataFactory.build(),
+                )
+            )
         downloader = FakeDownloader()
 
         with container.downloader.override(downloader), container.uow():
             container.message_bus().handle(RemoveVideo(video_id=video_id))
 
+        assert session.get_one(VideoORM, video_id).status is VideoStatus.REMOVED
+        assert downloader.discarded == []
+
+    def test_purge_video_deletes_a_removed_row(
+        self, container: Container, session: Session
+    ) -> None:
+        video_id = self._pending_video(container)
+        with container.uow():
+            container.message_bus().handle(RemoveVideo(video_id=video_id))
+
+        with container.uow():
+            container.message_bus().handle(PurgeVideo(video_id=video_id))
+
         assert session.get(VideoORM, video_id) is None
-        assert downloader.discarded == [video_id]
 
     def test_handled_events_are_not_left_on_the_video(
         self, container: Container

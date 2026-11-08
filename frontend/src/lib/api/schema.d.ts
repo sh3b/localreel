@@ -106,7 +106,11 @@ export interface components {
 			 * Format: uuid
 			 */
 			id: string;
-			status: components['schemas']['VideoStatus'];
+			/**
+			 * Status
+			 * @enum {string}
+			 */
+			status: 'PENDING' | 'DOWNLOADING' | 'FAILED';
 			/** Source Url */
 			source_url: string;
 			/** Error */
@@ -216,11 +220,6 @@ export interface components {
 		 * @enum {string}
 		 */
 		VideoSource: 'YOUTUBE' | 'TIKTOK' | 'FACEBOOK';
-		/**
-		 * VideoStatus
-		 * @enum {string}
-		 */
-		VideoStatus: 'PENDING' | 'DOWNLOADING' | 'READY' | 'FAILED';
 	};
 	responses: never;
 	parameters: never;

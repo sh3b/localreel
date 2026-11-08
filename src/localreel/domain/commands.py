@@ -42,3 +42,8 @@ class RetryVideo(Command):
 @dataclass(frozen=True)
 class RemoveVideo(Command):
     video_id: UUID
+
+
+@dataclass(frozen=True)
+class PurgeVideo(Command):
+    video_id: UUID

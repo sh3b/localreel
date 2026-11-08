@@ -20,7 +20,12 @@ class PostgresVideoRepository(AbstractVideoRepository):
     def exists(self, *, source_key: str) -> bool:
         return bool(
             self._session.scalar(
-                select(exists().where(VideoORM.source_key == source_key))
+                select(
+                    exists().where(
+                        VideoORM.source_key == source_key,
+                        VideoORM.status != VideoStatus.REMOVED,
+                    )
+                )
             )
         )
 
@@ -62,6 +67,13 @@ class PostgresVideoRepository(AbstractVideoRepository):
         return list(
             self._session.scalars(
                 select(VideoORM.id).where(VideoORM.status == VideoStatus.DOWNLOADING)
+            )
+        )
+
+    def removed(self) -> list[UUID]:
+        return list(
+            self._session.scalars(
+                select(VideoORM.id).where(VideoORM.status == VideoStatus.REMOVED)
             )
         )
 

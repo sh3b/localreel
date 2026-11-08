@@ -21,13 +21,19 @@ class FakeDownloadService(DownloadService):
         self.calls = 0
         self.resets_before_first_call: int | None = None
         self._resets = 0
+        self.purges_before_each_call: list[int] = []
+        self._purges = 0
 
     def reset_interrupted_downloads(self) -> None:
         self._resets += 1
 
+    def purge_removed(self) -> None:
+        self._purges += 1
+
     def download_next(self) -> bool:
         if self.calls == 0:
             self.resets_before_first_call = self._resets
+        self.purges_before_each_call.append(self._purges)
         self.calls += 1
         try:
             return next(self._results)
@@ -41,6 +47,16 @@ class TestWorker:
         recorded: list[float] = []
         monkeypatch.setattr(time, "sleep", recorded.append)
         return recorded
+
+    def test_purges_removed_videos_before_every_download(
+        self, sleeps: list[float]
+    ) -> None:
+        service = FakeDownloadService([True, False, True])
+
+        with pytest.raises(StopLoop):
+            Worker(service=service, poll_interval_sec=5).run()
+
+        assert service.purges_before_each_call == [1, 2, 3, 4]
 
     def test_sleeps_for_the_poll_interval_when_there_is_no_work(
         self, sleeps: list[float]

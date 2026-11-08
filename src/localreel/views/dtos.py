@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -31,9 +32,12 @@ class VideoPage(BaseModel):
     next_cursor: UUID | None
 
 
+QueueStatus = Literal[VideoStatus.PENDING, VideoStatus.DOWNLOADING, VideoStatus.FAILED]
+
+
 class QueueItem(BaseModel):
     id: UUID
-    status: VideoStatus
+    status: QueueStatus
     source_url: str
     error: str | None
     saved_at: datetime

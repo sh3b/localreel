@@ -3,11 +3,12 @@ import logging
 from localreel.domain.commands import (
     MarkFailed,
     MarkReady,
+    PurgeVideo,
     ResetDownload,
     StartDownload,
 )
 from localreel.domain.downloader import AbstractDownloader
-from localreel.domain.exceptions import InvalidStatusTransition, VideoNotFound
+from localreel.domain.exceptions import InvalidStatusTransition
 from localreel.domain.unit_of_work import AbstractUnitOfWork
 from localreel.service_layer.message_bus import MessageBus
 
@@ -33,27 +34,35 @@ class DownloadService:
             with self._uow:
                 self._bus.handle(ResetDownload(video_id=video_id))
 
+    def purge_removed(self) -> None:
+        # Removing a video only marks it. Its files are deleted here, outside
+        # any transaction, and only then its row, so a crash in between leaves
+        # a hidden row whose files are already gone; the next pass finishes it.
+        with self._uow(commit=False):
+            video_ids = self._uow.videos.removed()
+        for video_id in video_ids:
+            try:
+                self._downloader.discard(video_id=video_id)
+                with self._uow:
+                    self._bus.handle(PurgeVideo(video_id=video_id))
+            except Exception:
+                logger.exception("could not purge video %s; trying again", video_id)
+
     def download_next(self) -> bool:
         # Pick: read only.
         with self._uow(commit=False):
             video_id = self._uow.videos.next_pending()
-        if video_id is None:
-            return False
+            if video_id is None:
+                return False
+            source_url = self._uow.videos.get(video_id, lock=False).source_url
 
         # Claim: committed before the download, so a crash leaves a row to recover.
         try:
             with self._uow:
                 self._bus.handle(StartDownload(video_id=video_id))
         except InvalidStatusTransition:
-            logger.info("video %s was already taken", video_id)
+            logger.info("video %s was taken or removed meanwhile", video_id)
             return True
-        except VideoNotFound:
-            logger.info("video %s was removed before it started", video_id)
-            return True
-
-        # Read after the claim: a downloading video can no longer be removed.
-        with self._uow(commit=False):
-            source_url = self._uow.videos.get(video_id, lock=False).source_url
 
         # Download: outside any transaction, it takes time.
         command: MarkReady | MarkFailed

@@ -28,7 +28,7 @@ class PostgresUnitOfWork(AbstractUnitOfWork):
 
     def commit(self) -> None:
         for video in self.videos.seen.values():
-            if video.removed:
+            if video.purged:
                 self.videos.delete(video)
             else:
                 self.videos.save(video)
