@@ -12,12 +12,16 @@
 	let { children }: LayoutProps = $props();
 
 	function onkeydown(event: KeyboardEvent) {
-		if (isTyping(event) || event.metaKey || event.ctrlKey || event.altKey) return;
+		if (event.metaKey || event.ctrlKey || event.altKey) return;
 		const item = NAV.find((n) => n.key === event.key);
-		if (item) {
-			event.preventDefault();
-			void goto(resolve(item.href));
-		}
+		if (!item) return;
+		// The Add page opens with the cursor in its link box. While the box is
+		// empty a digit can't be the start of a link, so it still switches pages.
+		const field = event.target;
+		const emptyBox = field instanceof HTMLTextAreaElement && field.value === '';
+		if (isTyping(event) && !emptyBox) return;
+		event.preventDefault();
+		void goto(resolve(item.href));
 	}
 </script>
 
