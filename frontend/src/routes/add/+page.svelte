@@ -196,9 +196,12 @@
 		<QueueList
 			items={queue.items}
 			waitingNotShown={queue.waitingNotShown}
+			failedCount={queue.totals.failed}
 			retrying={queue.retrying}
+			retryingAll={queue.retryingAll}
 			removing={queue.removing}
 			onretry={(id) => queue.retry(id)}
+			onretryall={() => queue.retryAll()}
 			onremove={(id) => queue.remove(id)}
 		/>
 	</section>

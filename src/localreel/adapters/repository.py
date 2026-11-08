@@ -70,6 +70,13 @@ class PostgresVideoRepository(AbstractVideoRepository):
             )
         )
 
+    def failed(self) -> list[UUID]:
+        return list(
+            self._session.scalars(
+                select(VideoORM.id).where(VideoORM.status == VideoStatus.FAILED)
+            )
+        )
+
     def removed(self) -> list[UUID]:
         return list(
             self._session.scalars(

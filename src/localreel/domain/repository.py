@@ -35,6 +35,11 @@ class AbstractVideoRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def failed(self) -> list[UUID]:
+        """The ids of every FAILED video."""
+        raise NotImplementedError
+
+    @abstractmethod
     def removed(self) -> list[UUID]:
         """The ids of every REMOVED video."""
         raise NotImplementedError

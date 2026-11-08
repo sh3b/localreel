@@ -187,6 +187,22 @@
         }
       }
     },
+    "/videos/retry-failed": {
+      "post": {
+        "summary": "Retry Failed Videos",
+        "operationId": "retry_failed_videos_videos_retry_failed_post",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/videos/{video_id}": {
       "delete": {
         "summary": "Remove Video",

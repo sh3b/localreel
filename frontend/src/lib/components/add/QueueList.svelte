@@ -6,13 +6,26 @@
 	type Props = {
 		items: QueueItem[];
 		waitingNotShown: number;
+		failedCount: number;
 		retrying: Set<string>;
+		retryingAll: boolean;
 		removing: Set<string>;
 		onretry: (id: string) => void;
+		onretryall: () => void;
 		onremove: (id: string) => void;
 	};
 
-	let { items, waitingNotShown, retrying, removing, onretry, onremove }: Props = $props();
+	let {
+		items,
+		waitingNotShown,
+		failedCount,
+		retrying,
+		retryingAll,
+		removing,
+		onretry,
+		onretryall,
+		onremove
+	}: Props = $props();
 </script>
 
 {#if items.length === 0}
@@ -20,9 +33,15 @@
 		Nothing in progress. New links show up here while they download.
 	</p>
 {:else}
-	<p class="border-b border-line px-4 py-3 text-faint">
-		One video downloads at a time, oldest first.
-	</p>
+	<div class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
+		<p class="text-faint">One video downloads at a time, oldest first.</p>
+		<!-- For when many failed at once, like while the network was down. -->
+		{#if failedCount > 1}
+			<button type="button" class={secondaryButton} disabled={retryingAll} onclick={onretryall}>
+				{retryingAll ? 'retrying…' : `retry all ${failedCount} failed`}
+			</button>
+		{/if}
+	</div>
 	<!-- Wide: one grid for all rows, so labels and buttons line up down the list.
 	     Narrow: the buttons move under the link, so the link stays readable. -->
 	<div class="@container">

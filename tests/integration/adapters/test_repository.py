@@ -137,6 +137,18 @@ class TestPostgresVideoRepository:
 
         assert set(repository.downloading()) == {first.id, second.id}
 
+    def test_failed_returns_every_failed_video(self, session: Session) -> None:
+        repository = PostgresVideoRepository(session)
+        kept = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
+        failed = VideoFactory.build(source_url="https://youtu.be/dQw4w9WgXcQ")
+        for video in (kept, failed):
+            repository.add(video)
+        failed.start_download()
+        failed.mark_failed("Video unavailable")
+        repository.save(failed)
+
+        assert repository.failed() == [failed.id]
+
     def test_removed_returns_every_removed_video(self, session: Session) -> None:
         repository = PostgresVideoRepository(session)
         kept = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")

@@ -43,6 +43,7 @@ function server(overrides: Partial<QueueServer> = {}): QueueServer {
 		queue: () => Promise.resolve(page([])),
 		submit: () => Promise.resolve([]),
 		retry: async () => {},
+		retryAll: async () => {},
 		remove: async () => {},
 		...overrides
 	};
@@ -192,24 +193,49 @@ describe('AddQueue', () => {
 		stop();
 	});
 
-	it('gives up on a send, retry or remove the server never answers', async () => {
+	it('gives up on a send, retry, retry all or remove the server never answers', async () => {
 		vi.useFakeTimers();
 		const queue = new AddQueue(
 			server({
 				submit: (_urls, signal) => neverAnswered(signal),
 				retry: (_id, signal) => neverAnswered(signal),
+				retryAll: (signal) => neverAnswered(signal),
 				remove: (_id, signal) => neverAnswered(signal)
 			})
 		);
 
 		const sent = queue.send(['https://youtu.be/a']);
 		void queue.retry('a');
+		void queue.retryAll();
 		void queue.remove('b');
 		await vi.advanceTimersByTimeAsync(10_000);
 
 		expect(await sent).toBeNull();
 		expect([queue.sending, queue.sendFailed]).toEqual([false, true]);
-		expect([queue.retrying.has('a'), queue.removing.has('b')]).toEqual([false, false]);
+		expect([queue.retrying.has('a'), queue.retryingAll, queue.removing.has('b')]).toEqual([
+			false,
+			false,
+			false
+		]);
+	});
+
+	it('retries every failed video and shows the queue after', async () => {
+		let status: QueueItem['status'] = 'FAILED';
+		const queue = new AddQueue(
+			server({
+				retryAll: () => {
+					status = 'PENDING';
+					return Promise.resolve();
+				},
+				queue: () => Promise.resolve(page([item('a', status), item('b', status)]))
+			})
+		);
+		await queue.refresh();
+		expect(queue.totals.failed).toBe(2);
+
+		await queue.retryAll();
+
+		expect([queue.totals.failed, queue.totals.pending, queue.retryingAll]).toEqual([0, 2, false]);
 	});
 
 	it('counts the waiting videos past the limit', async () => {

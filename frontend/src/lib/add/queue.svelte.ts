@@ -6,6 +6,7 @@ export type QueueServer = {
 	queue: (signal: AbortSignal) => Promise<QueuePage>;
 	submit: (urls: string[], signal: AbortSignal) => Promise<SubmitResult[]>;
 	retry: (id: string, signal: AbortSignal) => Promise<void>;
+	retryAll: (signal: AbortSignal) => Promise<void>;
 	remove: (id: string, signal: AbortSignal) => Promise<void>;
 };
 
@@ -35,6 +36,9 @@ const fromApi: QueueServer = {
 			signal
 		});
 	},
+	async retryAll(signal) {
+		await api.POST('/videos/retry-failed', { signal });
+	},
 	async remove(id, signal) {
 		// Same as retry: a 404 or 409 shows in the refresh that follows.
 		await api.DELETE('/videos/{video_id}', { params: { path: { video_id: id } }, signal });
@@ -55,6 +59,7 @@ export class AddQueue {
 	sending = $state(false);
 	sendFailed = $state(false);
 	retrying = new SvelteSet<string>();
+	retryingAll = $state(false);
 	removing = new SvelteSet<string>();
 
 	// Refreshes overlap (the poll, plus one after every send, retry and remove) and
@@ -136,6 +141,17 @@ export class AddQueue {
 		}
 		await this.refresh();
 		this.retrying.delete(id);
+	}
+
+	async retryAll(): Promise<void> {
+		this.retryingAll = true;
+		try {
+			await withTimeout((signal) => this.#server.retryAll(signal));
+		} catch {
+			// No answer: the refresh below shows whether the server is reachable.
+		}
+		await this.refresh();
+		this.retryingAll = false;
 	}
 
 	async remove(id: string): Promise<void> {

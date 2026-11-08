@@ -227,6 +227,63 @@ class TestRetryVideo:
         }
 
 
+class TestRetryFailedVideos:
+    def test_returns_202_and_puts_every_failed_video_back_to_pending(
+        self, client: TestClient, session: Session
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        videos = [
+            VideoFactory.build(source_url=f"https://youtu.be/{key}")
+            for key in ("jNQXAC9IVRw", "dQw4w9WgXcQ", "9bZkp7q19f0")
+        ]
+        for video in videos:
+            repository.add(video)
+        for video in videos[:2]:
+            video.start_download()
+            video.mark_failed("Video unavailable")
+            repository.save(video)
+        session.commit()
+
+        response = client.post("/videos/retry-failed")
+
+        assert response.status_code == 202
+        session.expire_all()
+        for video in videos:
+            row = session.get_one(VideoORM, video.id)
+            assert (row.status, row.error) == (VideoStatus.PENDING, None)
+
+    def test_skips_a_video_retried_or_removed_meanwhile(
+        self,
+        client: TestClient,
+        session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        repository = PostgresVideoRepository(session)
+        retried = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
+        failed = VideoFactory.build(source_url="https://youtu.be/dQw4w9WgXcQ")
+        for video in (retried, failed):
+            repository.add(video)
+        failed.start_download()
+        failed.mark_failed("Video unavailable")
+        repository.save(failed)
+        session.commit()
+        purged = uuid7()
+        monkeypatch.setattr(
+            PostgresVideoRepository, "failed", lambda _: [retried.id, purged, failed.id]
+        )
+
+        response = client.post("/videos/retry-failed")
+
+        assert response.status_code == 202
+        session.expire_all()
+        assert session.get_one(VideoORM, failed.id).status is VideoStatus.PENDING
+
+    def test_returns_202_when_nothing_failed(self, client: TestClient) -> None:
+        response = client.post("/videos/retry-failed")
+
+        assert response.status_code == 202
+
+
 class TestRemoveVideo:
     def test_returns_204_and_marks_a_failed_video_removed(
         self, client: TestClient, session: Session

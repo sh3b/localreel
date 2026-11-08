@@ -7,7 +7,12 @@ from fastapi import APIRouter, Depends, Query, status
 
 from localreel.containers import Container
 from localreel.domain.commands import RemoveVideo, RetryVideo, SubmitURL
-from localreel.domain.exceptions import DuplicateVideo, UnsupportedSource
+from localreel.domain.exceptions import (
+    DuplicateVideo,
+    InvalidStatusTransition,
+    UnsupportedSource,
+    VideoNotFound,
+)
 from localreel.domain.unit_of_work import AbstractUnitOfWork
 from localreel.domain.value_objects import SourceURL, VideoStatus
 from localreel.entrypoints.api.schemas.videos import (
@@ -99,6 +104,20 @@ def retry_video(
 ) -> None:
     with uow:
         bus.handle(RetryVideo(video_id=video_id))
+
+
+# Not /videos/failed/retry: /videos/{video_id}/retry would take that path.
+@router.post("/videos/retry-failed", status_code=status.HTTP_202_ACCEPTED)
+@inject
+def retry_failed_videos(
+    uow: Annotated[AbstractUnitOfWork, Depends(Provide[Container.uow])],
+    bus: Annotated[MessageBus, Depends(Provide[Container.message_bus])],
+) -> None:
+    with uow(commit=False):
+        video_ids = uow.videos.failed()
+    for video_id in video_ids:
+        with suppress(InvalidStatusTransition, VideoNotFound), uow:
+            bus.handle(RetryVideo(video_id=video_id))
 
 
 @router.delete("/videos/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
