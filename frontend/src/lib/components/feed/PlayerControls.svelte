@@ -7,12 +7,24 @@
 		muted: boolean;
 		fullscreen: boolean;
 		canFullscreen: boolean;
+		removing: boolean;
 		onplay: () => void;
 		onsound: () => void;
 		onfullscreen: () => void;
+		onremove: () => void;
 	};
 
-	let { paused, muted, fullscreen, canFullscreen, onplay, onsound, onfullscreen }: Props = $props();
+	let {
+		paused,
+		muted,
+		fullscreen,
+		canFullscreen,
+		removing,
+		onplay,
+		onsound,
+		onfullscreen,
+		onremove
+	}: Props = $props();
 </script>
 
 <div class="flex flex-wrap gap-2">
@@ -30,4 +42,8 @@
 			{fullscreen ? 'exit fullscreen' : 'fullscreen'}
 		</button>
 	{/if}
+	<button type="button" class={controlButton} onclick={onremove} disabled={removing}>
+		<kbd class="text-faint">x</kbd>
+		{removing ? 'removing…' : 'remove'}
+	</button>
 </div>

@@ -29,8 +29,17 @@ function fakeServer(total: number) {
 		const more = start + request.limit < all.length;
 		return Promise.resolve({ items, next_cursor: more ? items[items.length - 1].id : null });
 	}
-	return { page, requests };
+	function remove(id: string): Promise<void> {
+		all.splice(
+			all.findIndex((c) => c.id === id),
+			1
+		);
+		return Promise.resolve();
+	}
+	return { page, remove, requests };
 }
+
+const neverRemoves = () => Promise.resolve();
 
 describe('VideoStream', () => {
 	afterEach(() => {
@@ -89,6 +98,7 @@ describe('VideoStream', () => {
 		const answers: Array<() => void> = [];
 		const all = fakeServer(3);
 		const stream = new VideoStream({
+			remove: neverRemoves,
 			page: (request) => new Promise((resolve) => answers.push(() => resolve(all.page(request))))
 		});
 
@@ -108,6 +118,7 @@ describe('VideoStream', () => {
 		const server = fakeServer(30);
 		let failNext = false;
 		const stream = new VideoStream({
+			remove: neverRemoves,
 			page: (request) => {
 				if (failNext) {
 					failNext = false;
@@ -130,6 +141,7 @@ describe('VideoStream', () => {
 		const server = fakeServer(30);
 		const answers: Array<() => void> = [];
 		const stream = new VideoStream({
+			remove: neverRemoves,
 			page: (request) => new Promise((resolve) => answers.push(() => resolve(server.page(request))))
 		});
 		const loaded = stream.ensureLoaded();
@@ -147,6 +159,7 @@ describe('VideoStream', () => {
 
 	it('keeps what it has and reports when a page fails', async () => {
 		const stream = new VideoStream({
+			remove: neverRemoves,
 			page: () => Promise.reject(new Error('The server did not answer.'))
 		});
 
@@ -157,9 +170,80 @@ describe('VideoStream', () => {
 		expect(stream.loading).toBe(false);
 	});
 
+	it('removes a video and stays on the one shown', async () => {
+		const server = fakeServer(5);
+		const stream = new VideoStream(server);
+		await stream.ensureLoaded();
+		await stream.go(3);
+
+		await stream.remove('id-1');
+
+		expect(stream.items.map((v) => v.id)).toEqual(['id-0', 'id-2', 'id-3', 'id-4']);
+		expect(stream.current?.id).toBe('id-3');
+		expect(stream.removing).toBe(false);
+	});
+
+	it('shows the next video after removing the one shown, or the last one at the end', async () => {
+		const stream = new VideoStream(fakeServer(3));
+		await stream.ensureLoaded();
+		await stream.go(1);
+
+		await stream.remove('id-1');
+		expect(stream.current?.id).toBe('id-2');
+
+		await stream.remove('id-2');
+		expect(stream.current?.id).toBe('id-0');
+	});
+
+	it('loads the next page when a removal leaves the list short', async () => {
+		const server = fakeServer(30);
+		const stream = new VideoStream(server);
+		await stream.ensureLoaded();
+		await stream.go(20);
+		expect(stream.items).toHaveLength(24);
+
+		await stream.remove('id-20');
+
+		expect(stream.items).toHaveLength(29);
+		expect(stream.current?.id).toBe('id-21');
+	});
+
+	it('keeps the video and reports when the server does not remove it', async () => {
+		const stream = new VideoStream({
+			...fakeServer(3),
+			remove: () => Promise.reject(new Error('The server did not remove it.'))
+		});
+		await stream.ensureLoaded();
+
+		await stream.remove('id-1');
+
+		expect(stream.items).toHaveLength(3);
+		expect([stream.removeFailed, stream.removing]).toEqual([true, false]);
+	});
+
+	it('gives up on a remove the server never answers', async () => {
+		vi.useFakeTimers();
+		const stream = new VideoStream({
+			...fakeServer(3),
+			remove: (_id, signal) =>
+				new Promise((_, reject) => {
+					signal.addEventListener('abort', () => reject(new Error('aborted')));
+				})
+		});
+		await stream.ensureLoaded();
+
+		const removed = stream.remove('id-1');
+		await vi.advanceTimersByTimeAsync(10_000);
+		await removed;
+
+		expect([stream.removeFailed, stream.removing]).toEqual([true, false]);
+		expect(stream.items).toHaveLength(3);
+	});
+
 	it('gives up on a page the server never answers', async () => {
 		vi.useFakeTimers();
 		const stream = new VideoStream({
+			remove: neverRemoves,
 			page: (_request, signal) =>
 				new Promise((_, reject) => {
 					signal.addEventListener('abort', () => reject(new Error('aborted')));

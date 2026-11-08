@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import type { VideoCard } from '#lib/api/client.ts';
 	import { controlButton, primaryButton, secondaryButton } from '#lib/components/buttons.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import FeedVideo from '#lib/components/feed/FeedVideo.svelte';
 	import Filmstrip from '#lib/components/feed/Filmstrip.svelte';
 	import PlayerControls from '#lib/components/feed/PlayerControls.svelte';
@@ -21,6 +23,8 @@
 	// iPhone Safari has no element fullscreen: no button, and f does nothing.
 	let canFullscreen = $state(false);
 	let controlsVisible = $state(true);
+	// The video waiting for "remove" to be confirmed.
+	let confirming = $state<VideoCard | null>(null);
 	let stage = $state<HTMLElement>();
 	let player = $state<ReturnType<typeof FeedVideo>>();
 	let hideTimer: ReturnType<typeof setTimeout> | undefined;
@@ -61,7 +65,8 @@
 			{ keys: 'j k', action: 'next / previous' },
 			{ keys: 'space', action: 'play / pause' },
 			...(canFullscreen ? [{ keys: 'f', action: 'fullscreen' }] : []),
-			{ keys: 'm', action: 'sound' }
+			{ keys: 'm', action: 'sound' },
+			{ keys: 'x', action: 'remove' }
 		];
 		void stream.ensureLoaded();
 		return () => {
@@ -118,6 +123,15 @@
 		change?.catch(() => {});
 	}
 
+	function askToRemove() {
+		if (video) confirming = video;
+	}
+
+	function removeConfirmed(id: string) {
+		confirming = null;
+		void stream.remove(id);
+	}
+
 	// In fullscreen the details fade out while playing and come back on input.
 	function wake() {
 		controlsVisible = true;
@@ -126,6 +140,8 @@
 	}
 
 	function onkeydown(event: KeyboardEvent) {
+		// The dialog handles its own keys; the Feed must not move under it.
+		if (confirming) return;
 		if (isTyping(event) || event.metaKey || event.ctrlKey || event.altKey) return;
 		const actions: Record<string, () => void | Promise<void>> = {
 			j: next,
@@ -135,6 +151,7 @@
 			' ': togglePlay,
 			f: toggleFullscreen,
 			m: toggleSound,
+			x: askToRemove,
 			g: () => {
 				if (finished) startOver();
 			}
@@ -219,9 +236,11 @@
 			{muted}
 			{fullscreen}
 			{canFullscreen}
+			removing={stream.removing}
 			onplay={togglePlay}
 			onsound={toggleSound}
 			onfullscreen={toggleFullscreen}
+			onremove={askToRemove}
 		/>
 	{/snippet}
 
@@ -246,6 +265,10 @@
 					<button type="button" class={controlButton} onclick={() => stream.loadMore()}>
 						try again
 					</button>
+				</p>
+			{:else if stream.removeFailed}
+				<p class="absolute inset-x-0 top-0 z-10 bg-bg/80 p-3 text-center text-danger">
+					The video could not be removed; try again.
 				</p>
 			{/if}
 			<div class={['flex h-full w-full items-center justify-center', LAYOUT[layout].stage]}>
@@ -300,4 +323,15 @@
 			></video>
 		{/if}
 	</div>
+{/if}
+
+{#if confirming}
+	<ConfirmDialog
+		title="Remove this video?"
+		message="“{confirming.title ??
+			'Untitled video'}” and its file are deleted from this server. This can't be undone."
+		confirmLabel="remove"
+		onconfirm={() => confirming && removeConfirmed(confirming.id)}
+		oncancel={() => (confirming = null)}
+	/>
 {/if}

@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import type { VideoSort } from '#lib/api/client.ts';
+	import type { VideoCard, VideoSort } from '#lib/api/client.ts';
 	import { controlButton, primaryButton } from '#lib/components/buttons.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import SortSwitch from '#lib/components/library/SortSwitch.svelte';
 	import TileContent from '#lib/components/library/TileContent.svelte';
 	import StatePanel from '#lib/components/StatePanel.svelte';
@@ -17,12 +18,15 @@
 	let scroller = $state<HTMLElement>();
 	let sentinel = $state<HTMLElement>();
 	const tiles: HTMLElement[] = [];
+	// The video waiting for "remove" to be confirmed.
+	let confirming = $state<VideoCard | null>(null);
 
 	onMount(() => {
 		shell.hints = [
 			{ keys: 'arrows', action: 'move' },
 			{ keys: 'enter', action: 'open in feed' },
-			{ keys: 's', action: 'change order' }
+			{ keys: 's', action: 'change order' },
+			{ keys: 'x', action: 'remove' }
 		];
 		void stream.ensureLoaded().then(async () => {
 			// Read after loading: a reload resets the position, and a stale one
@@ -71,12 +75,23 @@
 		void stream.restart(sort);
 	}
 
+	async function removeConfirmed(id: string) {
+		confirming = null;
+		await stream.remove(id);
+		// Stay on the tile that moved into this place, or the last one.
+		focused = Math.max(0, Math.min(focused, stream.items.length - 1));
+		await tick();
+		tiles[focused]?.focus();
+	}
+
 	function columns(): number {
 		if (!grid) return 1;
 		return getComputedStyle(grid).gridTemplateColumns.split(' ').length;
 	}
 
 	function onkeydown(event: KeyboardEvent) {
+		// The dialog handles its own keys; the grid must not move under it.
+		if (confirming) return;
 		if (isTyping(event) || event.metaKey || event.ctrlKey || event.altKey) return;
 		if (event.key === 's') {
 			event.preventDefault();
@@ -89,6 +104,11 @@
 				event.preventDefault();
 				tiles[focused]?.focus();
 			}
+			return;
+		}
+		if (event.key === 'x') {
+			event.preventDefault();
+			confirming = stream.items[focused] ?? null;
 			return;
 		}
 		const cols = columns();
@@ -109,6 +129,9 @@
 		<span class="text-accent" aria-hidden="true">&gt;</span>
 		<span class="text-faint">sort:</span>
 		<SortSwitch value={stream.sort} onchange={changeOrder} />
+		{#if stream.removeFailed}
+			<p class="ml-auto truncate text-danger">The video could not be removed; try again.</p>
+		{/if}
 	</div>
 
 	<div bind:this={scroller} class="min-h-0 flex-1 overflow-y-auto">
@@ -139,7 +162,7 @@
 				class="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-3 p-3 md:grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] md:gap-tile md:p-4"
 			>
 				{#each stream.items as video, index (video.id)}
-					<li>
+					<li class="flex flex-col gap-1">
 						<button
 							bind:this={tiles[index]}
 							type="button"
@@ -150,6 +173,17 @@
 							class="block w-full outline-offset-2"
 						>
 							<TileContent {video} />
+						</button>
+						<!-- Out of the tab order: the grid is one stop, and x removes the focused tile. -->
+						<button
+							type="button"
+							tabindex="-1"
+							disabled={stream.removing}
+							onclick={() => (confirming = video)}
+							aria-label="Remove {video.title ?? 'video'}"
+							class="min-h-6 self-end px-1 text-caption text-faint hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							remove
 						</button>
 					</li>
 				{/each}
@@ -168,3 +202,14 @@
 		{/if}
 	</div>
 </div>
+
+{#if confirming}
+	<ConfirmDialog
+		title="Remove this video?"
+		message="“{confirming.title ??
+			'Untitled video'}” and its file are deleted from this server. This can't be undone."
+		confirmLabel="remove"
+		onconfirm={() => confirming && removeConfirmed(confirming.id)}
+		oncancel={() => (confirming = null)}
+	/>
+{/if}

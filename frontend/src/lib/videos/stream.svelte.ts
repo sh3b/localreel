@@ -5,6 +5,7 @@ export type PageRequest = { sort: VideoSort; after: string | null; limit: number
 
 export type StreamServer = {
 	page: (request: PageRequest, signal: AbortSignal) => Promise<VideoPage>;
+	remove: (id: string, signal: AbortSignal) => Promise<void>;
 };
 
 const PAGE_SIZE = 24;
@@ -17,6 +18,14 @@ const fromApi: StreamServer = {
 		});
 		if (error || !data) throw new Error('The server did not answer.');
 		return data;
+	},
+	async remove(id, signal) {
+		const { error, response } = await api.DELETE('/videos/{video_id}', {
+			params: { path: { video_id: id } },
+			signal
+		});
+		// 404: someone removed it already, which is what was asked.
+		if (error && response.status !== 404) throw new Error('The server did not remove it.');
 	}
 };
 
@@ -30,6 +39,8 @@ export class VideoStream {
 	complete = $state(false);
 	loading = $state(false);
 	loadFailed = $state(false);
+	removing = $state(false);
+	removeFailed = $state(false);
 
 	#cursor: string | null = null;
 	#started = false;
@@ -97,6 +108,27 @@ export class VideoStream {
 		} finally {
 			if (generation === this.#generation) this.loading = false;
 		}
+	}
+
+	// Removes the video for good. The list keeps showing the same video, or
+	// the one after it if this was the one shown.
+	async remove(id: string): Promise<void> {
+		this.removing = true;
+		this.removeFailed = false;
+		try {
+			await withTimeout((signal) => this.#server.remove(id, signal));
+		} catch {
+			this.removeFailed = true;
+			return;
+		} finally {
+			this.removing = false;
+		}
+		const index = this.items.findIndex((video) => video.id === id);
+		if (index === -1) return;
+		this.items = this.items.filter((video) => video.id !== id);
+		if (index < this.position) this.position -= 1;
+		// Clamps the position, and loads more if the list got short.
+		await this.go(this.position);
 	}
 
 	// Moves the feed, and loads the next page well before it is needed.
