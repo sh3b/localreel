@@ -16,6 +16,8 @@
 	import { stream } from '#lib/videos/stream.svelte.ts';
 	import { resolve } from '$app/paths';
 
+	const SKIP_SEC = 5;
+
 	let muted = $state(true);
 	let paused = $state(false);
 	let finished = $state(false);
@@ -64,6 +66,7 @@
 		shell.hints = [
 			{ keys: 'j k', action: 'next / previous' },
 			{ keys: 'space', action: 'play / pause' },
+			{ keys: '← →', action: `${SKIP_SEC}s back / forward` },
 			...(canFullscreen ? [{ keys: 'f', action: 'fullscreen' }] : []),
 			{ keys: 'm', action: 'sound' },
 			{ keys: 'x', action: 'remove' }
@@ -149,6 +152,8 @@
 			k: previous,
 			ArrowUp: previous,
 			' ': togglePlay,
+			ArrowLeft: () => player?.skip(-SKIP_SEC),
+			ArrowRight: () => player?.skip(SKIP_SEC),
 			f: toggleFullscreen,
 			m: toggleSound,
 			x: askToRemove,

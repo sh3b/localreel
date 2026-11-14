@@ -32,6 +32,12 @@
 		elementPaused = !elementPaused;
 	}
 
+	// The page's arrow keys call this. The browser keeps the position inside
+	// the video.
+	export function skip(seconds: number) {
+		if (element) element.currentTime += seconds;
+	}
+
 	// Start each new video. If the browser refuses autoplay with sound
 	// (NotAllowedError), fall back to muted rather than a frozen frame. Other
 	// failures, like the AbortError from skipping on quickly, leave sound alone.
