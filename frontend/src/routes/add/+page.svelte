@@ -26,7 +26,7 @@
 	};
 
 	const RESULT: Record<SubmitResult['result'], { label: string; tone: string }> = {
-		queued: { label: 'queued', tone: 'text-ok' },
+		queued: { label: 'added', tone: 'text-ok' },
 		ready: { label: 'already in your library', tone: 'text-warn' },
 		failed: { label: 'failed earlier, retry it in the queue', tone: 'text-danger' },
 		unsupported: { label: 'not supported', tone: 'text-danger' }
