@@ -42,17 +42,7 @@
 		return () => {
 			stop();
 			shell.hints = [];
-			shell.status = '';
 		};
-	});
-
-	$effect(() => {
-		const { downloading, pending, failed } = queue.totals;
-		const parts = [];
-		if (downloading > 0) parts.push(`${downloading} downloading`);
-		if (pending > 0) parts.push(`${pending} waiting`);
-		if (failed > 0) parts.push(`${failed} failed`);
-		shell.status = parts.join(', ');
 	});
 
 	async function send() {
