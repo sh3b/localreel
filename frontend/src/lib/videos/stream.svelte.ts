@@ -85,21 +85,41 @@ export class VideoStream {
 		await this.loadMore();
 	}
 
-	loadMore(): Promise<void> {
-		if (this.complete) return Promise.resolve();
-		if (!this.loading) this.#pending = this.#load();
+	// Loads the first page again, to show videos that became ready since. The
+	// list stays on screen until the new page is in, and the Feed stays on its
+	// video if that one is in the new page; otherwise it starts at the top.
+	refresh(): Promise<void> {
+		if (!this.#started) return this.restart(this.sort);
+		this.#generation += 1;
+		this.#pending = this.#load(true);
 		return this.#pending;
 	}
 
-	async #load(): Promise<void> {
+	loadMore(): Promise<void> {
+		if (this.complete) return Promise.resolve();
+		if (!this.loading) this.#pending = this.#load(false);
+		return this.#pending;
+	}
+
+	async #load(fromTop: boolean): Promise<void> {
 		const generation = this.#generation;
-		const request = { sort: this.sort, after: this.#cursor, limit: PAGE_SIZE };
+		const request = { sort: this.sort, after: fromTop ? null : this.#cursor, limit: PAGE_SIZE };
 		this.loading = true;
 		this.loadFailed = false;
 		try {
 			const page = await withTimeout((signal) => this.#server.page(request, signal));
 			if (generation !== this.#generation) return;
-			this.items = [...this.items, ...page.items];
+			if (fromTop) {
+				// Read now, not before the request: a tile opened meanwhile counts.
+				const shown = this.current?.id;
+				this.items = page.items;
+				this.position = Math.max(
+					0,
+					page.items.findIndex((video) => video.id === shown)
+				);
+			} else {
+				this.items = [...this.items, ...page.items];
+			}
 			this.#cursor = page.next_cursor;
 			this.complete = page.next_cursor === null;
 		} catch {

@@ -36,7 +36,11 @@ function fakeServer(total: number) {
 		);
 		return Promise.resolve();
 	}
-	return { page, remove, requests };
+	// A video that became ready: the newest, so first in the default order.
+	function add(n: number) {
+		all.unshift(card(n));
+	}
+	return { page, remove, add, requests };
 }
 
 const neverRemoves = () => Promise.resolve();
@@ -92,6 +96,78 @@ describe('VideoStream', () => {
 
 		expect(stream.position).toBe(0);
 		expect(server.requests.at(-1)).toMatchObject({ sort: 'oldest', after: null });
+	});
+
+	it('shows a video that became ready after the list was loaded', async () => {
+		const server = fakeServer(3);
+		const stream = new VideoStream(server);
+		await stream.ensureLoaded();
+		server.add(99);
+
+		await stream.refresh();
+
+		expect(stream.items.map((v) => v.id)).toEqual(['id-99', 'id-0', 'id-1', 'id-2']);
+		expect(stream.complete).toBe(true);
+	});
+
+	it('stays on the video shown when the list is loaded again', async () => {
+		const server = fakeServer(5);
+		const stream = new VideoStream(server);
+		await stream.ensureLoaded();
+		await stream.go(2);
+		server.add(99);
+
+		await stream.refresh();
+
+		expect(stream.current?.id).toBe('id-2');
+	});
+
+	it('stays on a video opened while the list was loading again', async () => {
+		const server = fakeServer(5);
+		const answers: Array<() => void> = [];
+		const stream = new VideoStream({
+			remove: neverRemoves,
+			page: (request) => new Promise((resolve) => answers.push(() => resolve(server.page(request))))
+		});
+		const loaded = stream.ensureLoaded();
+		answers.shift()?.();
+		await loaded;
+
+		const refreshed = stream.refresh();
+		await stream.go(3);
+		answers.shift()?.();
+		await refreshed;
+
+		expect(stream.current?.id).toBe('id-3');
+	});
+
+	it('starts at the top when the video shown is past the first page', async () => {
+		const server = fakeServer(30);
+		const stream = new VideoStream(server);
+		await stream.ensureLoaded();
+		await stream.go(26);
+
+		await stream.refresh();
+
+		expect(stream.items).toHaveLength(24);
+		expect(stream.position).toBe(0);
+	});
+
+	it('keeps the list it has when loading it again fails', async () => {
+		const server = fakeServer(3);
+		let fail = false;
+		const stream = new VideoStream({
+			remove: neverRemoves,
+			page: (request) =>
+				fail ? Promise.reject(new Error('The server did not answer.')) : server.page(request)
+		});
+		await stream.ensureLoaded();
+		fail = true;
+
+		await stream.refresh();
+
+		expect(stream.items).toHaveLength(3);
+		expect([stream.loadFailed, stream.loading]).toEqual([true, false]);
 	});
 
 	it('keeps only the new order when restarted while a page is still loading', async () => {

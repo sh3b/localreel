@@ -28,7 +28,7 @@
 			{ keys: 's', action: 'change order' },
 			{ keys: 'x', action: 'remove' }
 		];
-		void stream.ensureLoaded().then(async () => {
+		void stream.refresh().then(async () => {
 			// Read after loading: a reload resets the position, and a stale one
 			// would leave no tile reachable by keyboard.
 			focused = stream.position;
