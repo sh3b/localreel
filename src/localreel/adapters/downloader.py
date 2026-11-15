@@ -2,9 +2,6 @@ from pathlib import Path
 from typing import Any, ClassVar
 from uuid import UUID
 
-from yt_dlp import YoutubeDL
-from yt_dlp.utils import DownloadError, ExtractorError
-
 from localreel.domain.downloader import AbstractDownloader, DownloadResult
 from localreel.domain.exceptions import DownloadFailed
 from localreel.domain.value_objects import SourceMetadata
@@ -28,6 +25,11 @@ class YtDlpDownloader(AbstractDownloader):
         self._downloads_dir = downloads_dir
 
     def download(self, *, url: str, video_id: UUID) -> DownloadResult:
+        # Imported here: yt-dlp takes about 50 MB, and the API, which never
+        # downloads, imports this module too (containers.py).
+        from yt_dlp import YoutubeDL
+        from yt_dlp.utils import DownloadError, ExtractorError
+
         with YoutubeDL(self._options(video_id)) as ydl:
             try:
                 info = ydl.sanitize_info(ydl.extract_info(url, download=True))
