@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# Every action is pinned to a commit, like the images to a digest.
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:18.7-alpine@sha256:b6972e1115a4ff8eba5d7f7d19184926d1e16d7d1136ae1e1a7ebf286da0f015
+        env:
+          POSTGRES_USER: localreel
+          POSTGRES_PASSWORD: localreel
+          POSTGRES_DB: localreel
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-retries 10
+    env:
+      DB_USER: localreel
+      DB_PASSWORD: localreel
+      DB_NAME: localreel
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.8"
+          enable-cache: true
+      - run: uv sync --locked
+      - run: make lint
+      - run: make typecheck
+      - run: make migrate
+      - run: make cov
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.8"
+          enable-cache: true
+      - run: make fe-install
+      - run: make fe-check
+      - run: make fe-test
+      - run: make fe-build
+      - name: The generated API client matches the API
+        run: make openapi && git diff --exit-code frontend/src/lib/api
+
+  # Installs it the way the README says and checks that it answers.
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Start with docker compose
+        run: |
+          cp .env.example .env
+          sed -i "s/^PUID=.*/PUID=$(id -u)/; s/^PGID=.*/PGID=$(id -g)/" .env
+          mkdir -p data/downloads
+          docker compose up -d --build --wait
+      - name: The UI, the API and its docs answer
+        run: |
+          for path in / /library /api/videos/queue /api/docs; do
+            curl -fsS --retry 10 --retry-delay 2 --retry-all-errors -o /dev/null "http://localhost:8080$path"
+            echo "$path ok"
+          done
+      - if: failure()
+        run: docker compose logs
