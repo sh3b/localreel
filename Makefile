@@ -1,6 +1,10 @@
 export PYTHONPATH := src
 
 -include .env
+# Where the app finds Postgres: the one `make db` starts, unless .env says
+# otherwise.
+DB_HOST ?= localhost
+DB_PORT ?= 5432
 export
 
 .PHONY: install test cov lint format typecheck migration migrate db db-reset api worker openapi fe-install fe-dev fe-check fe-test fe-build

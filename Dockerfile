@@ -1,6 +1,15 @@
 # syntax=docker/dockerfile:1
-# One image runs the API and the download worker together (docker/start.sh).
-# Every base image is pinned to a digest, so a build always gets the same bytes.
+# One image runs nginx, the API and the download worker together
+# (docker/start.sh). Every base image is pinned to a digest, so a build always
+# gets the same bytes.
+
+# The UI, built to static files. Node stays in this stage.
+FROM node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS ui
+WORKDIR /ui
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend ./
+RUN npm run build
 
 # Build: install the locked dependencies into /app/.venv. uv and its cache
 # stay in this stage; the final image only gets the environment.
@@ -20,9 +29,11 @@ COPY --from=denoland/deno:bin-2.9.8@sha256:b507583d3c68ba69f3ed2ce5969ae5b8b70f4
 # how YouTube serves anything above 360p.
 # tini: PID 1, which hands a stop signal to start.sh and reaps what a
 # stopped download leaves behind.
+# nginx: serves the UI and the videos, and passes /api on to the API.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg tini \
+    && apt-get install -y --no-install-recommends ffmpeg tini nginx \
     && rm -rf /var/lib/apt/lists/*
+COPY docker/nginx.conf /etc/nginx/nginx.conf
 
 WORKDIR /app
 COPY --from=build /app/.venv ./.venv
@@ -40,8 +51,9 @@ ENV PYTHONPATH=/app/src \
 COPY pyproject.toml ./
 COPY src ./src
 COPY docker/start.sh ./
+COPY --from=ui /ui/build ./ui
 
-EXPOSE 8000
+EXPOSE 8080
 
 ENTRYPOINT ["tini", "--"]
 CMD ["./start.sh"]

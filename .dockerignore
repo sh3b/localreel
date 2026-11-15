@@ -10,4 +10,6 @@
 data
 tests
 docs
-frontend
+frontend/node_modules
+frontend/.svelte-kit
+frontend/build

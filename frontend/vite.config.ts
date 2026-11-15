@@ -7,10 +7,10 @@ import { defineConfig } from 'vitest/config';
 import path from 'node:path';
 import process from 'node:process';
 
-// Dev only, until nginx serves /media: the downloaded files, from the folder
-// the worker writes to. A relative DOWNLOADS_DIR is taken from the repo root,
-// where make runs the worker. sirv answers range requests, which a video
-// needs to seek.
+// Development only (nginx serves /media in the install): the downloaded
+// files, from the folder the worker writes to. A relative DOWNLOADS_DIR is
+// taken from the repo root, where make runs the worker. sirv answers range
+// requests, which a video needs to seek.
 function serveMedia(): Plugin {
 	const downloads = path.resolve(
 		import.meta.dirname,
@@ -35,7 +35,25 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 			// Single-page app: every unknown path gets index.html and the client routes it.
-			adapter: adapter({ fallback: 'index.html' })
+			adapter: adapter({ fallback: 'index.html' }),
+			// Written into index.html as a <meta> tag, with hashes for SvelteKit's own
+			// inline scripts. Only scripts from this site run, so injected markup
+			// can't execute. Inline styles stay allowed: Svelte sets some itself and
+			// they cannot run code.
+			csp: {
+				mode: 'hash',
+				directives: {
+					'default-src': ['self'],
+					'script-src': ['self'],
+					'style-src': ['self', 'unsafe-inline'],
+					'img-src': ['self', 'data:'],
+					'media-src': ['self'],
+					'connect-src': ['self'],
+					'object-src': ['none'],
+					'base-uri': ['self'],
+					'form-action': ['self']
+				}
+			}
 		}),
 		serveMedia()
 	],
