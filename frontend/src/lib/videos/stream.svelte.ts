@@ -12,7 +12,7 @@ const PAGE_SIZE = 24;
 
 const fromApi: StreamServer = {
 	async page({ sort, after, limit }, signal) {
-		const { data, error } = await api.GET('/videos', {
+		const { data, error } = await api.GET('/api/videos', {
 			params: { query: { sort, after, limit } },
 			signal
 		});
@@ -20,7 +20,7 @@ const fromApi: StreamServer = {
 		return data;
 	},
 	async remove(id, signal) {
-		const { error, response } = await api.DELETE('/videos/{video_id}', {
+		const { error, response } = await api.DELETE('/api/videos/{video_id}', {
 			params: { path: { video_id: id } },
 			signal
 		});

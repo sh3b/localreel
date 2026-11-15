@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-	'/videos': {
+	'/api/videos': {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -12,17 +12,17 @@ export interface paths {
 			cookie?: never;
 		};
 		/** List Videos */
-		get: operations['list_videos_videos_get'];
+		get: operations['list_videos_api_videos_get'];
 		put?: never;
 		/** Submit Url */
-		post: operations['submit_url_videos_post'];
+		post: operations['submit_url_api_videos_post'];
 		delete?: never;
 		options?: never;
 		head?: never;
 		patch?: never;
 		trace?: never;
 	};
-	'/videos/batch': {
+	'/api/videos/batch': {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -32,14 +32,14 @@ export interface paths {
 		get?: never;
 		put?: never;
 		/** Submit Urls */
-		post: operations['submit_urls_videos_batch_post'];
+		post: operations['submit_urls_api_videos_batch_post'];
 		delete?: never;
 		options?: never;
 		head?: never;
 		patch?: never;
 		trace?: never;
 	};
-	'/videos/{video_id}/retry': {
+	'/api/videos/{video_id}/retry': {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -49,14 +49,14 @@ export interface paths {
 		get?: never;
 		put?: never;
 		/** Retry Video */
-		post: operations['retry_video_videos__video_id__retry_post'];
+		post: operations['retry_video_api_videos__video_id__retry_post'];
 		delete?: never;
 		options?: never;
 		head?: never;
 		patch?: never;
 		trace?: never;
 	};
-	'/videos/retry-failed': {
+	'/api/videos/retry-failed': {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -66,14 +66,14 @@ export interface paths {
 		get?: never;
 		put?: never;
 		/** Retry Failed Videos */
-		post: operations['retry_failed_videos_videos_retry_failed_post'];
+		post: operations['retry_failed_videos_api_videos_retry_failed_post'];
 		delete?: never;
 		options?: never;
 		head?: never;
 		patch?: never;
 		trace?: never;
 	};
-	'/videos/{video_id}': {
+	'/api/videos/{video_id}': {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -84,13 +84,13 @@ export interface paths {
 		put?: never;
 		post?: never;
 		/** Remove Video */
-		delete: operations['remove_video_videos__video_id__delete'];
+		delete: operations['remove_video_api_videos__video_id__delete'];
 		options?: never;
 		head?: never;
 		patch?: never;
 		trace?: never;
 	};
-	'/videos/queue': {
+	'/api/videos/queue': {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -98,7 +98,7 @@ export interface paths {
 			cookie?: never;
 		};
 		/** List Queue */
-		get: operations['list_queue_videos_queue_get'];
+		get: operations['list_queue_api_videos_queue_get'];
 		put?: never;
 		post?: never;
 		delete?: never;
@@ -246,7 +246,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-	list_videos_videos_get: {
+	list_videos_api_videos_get: {
 		parameters: {
 			query?: {
 				sort?: components['schemas']['VideoSort'];
@@ -279,7 +279,7 @@ export interface operations {
 			};
 		};
 	};
-	submit_url_videos_post: {
+	submit_url_api_videos_post: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -312,7 +312,7 @@ export interface operations {
 			};
 		};
 	};
-	submit_urls_videos_batch_post: {
+	submit_urls_api_videos_batch_post: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -345,7 +345,7 @@ export interface operations {
 			};
 		};
 	};
-	retry_video_videos__video_id__retry_post: {
+	retry_video_api_videos__video_id__retry_post: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -376,7 +376,7 @@ export interface operations {
 			};
 		};
 	};
-	retry_failed_videos_videos_retry_failed_post: {
+	retry_failed_videos_api_videos_retry_failed_post: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -396,7 +396,7 @@ export interface operations {
 			};
 		};
 	};
-	remove_video_videos__video_id__delete: {
+	remove_video_api_videos__video_id__delete: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -425,7 +425,7 @@ export interface operations {
 			};
 		};
 	};
-	list_queue_videos_queue_get: {
+	list_queue_api_videos_queue_get: {
 		parameters: {
 			query?: {
 				limit?: number;

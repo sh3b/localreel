@@ -16,7 +16,7 @@ const QUEUE_LIMIT = 100;
 
 const fromApi: QueueServer = {
 	async queue(signal) {
-		const { data, error } = await api.GET('/videos/queue', {
+		const { data, error } = await api.GET('/api/videos/queue', {
 			params: { query: { limit: QUEUE_LIMIT } },
 			signal
 		});
@@ -24,24 +24,24 @@ const fromApi: QueueServer = {
 		return data;
 	},
 	async submit(urls, signal) {
-		const { data, error } = await api.POST('/videos/batch', { body: { urls }, signal });
+		const { data, error } = await api.POST('/api/videos/batch', { body: { urls }, signal });
 		if (error || !data) throw new Error('The server did not answer.');
 		return data;
 	},
 	async retry(id, signal) {
 		// A 404 or 409 means the video changed meanwhile; the refresh that
 		// follows shows how it is now.
-		await api.POST('/videos/{video_id}/retry', {
+		await api.POST('/api/videos/{video_id}/retry', {
 			params: { path: { video_id: id } },
 			signal
 		});
 	},
 	async retryAll(signal) {
-		await api.POST('/videos/retry-failed', { signal });
+		await api.POST('/api/videos/retry-failed', { signal });
 	},
 	async remove(id, signal) {
 		// Same as retry: a 404 or 409 shows in the refresh that follows.
-		await api.DELETE('/videos/{video_id}', { params: { path: { video_id: id } }, signal });
+		await api.DELETE('/api/videos/{video_id}', { params: { path: { video_id: id } }, signal });
 	}
 };
 

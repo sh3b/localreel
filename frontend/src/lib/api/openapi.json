@@ -5,10 +5,10 @@
     "version": "0.1.0"
   },
   "paths": {
-    "/videos": {
+    "/api/videos": {
       "post": {
         "summary": "Submit Url",
-        "operationId": "submit_url_videos_post",
+        "operationId": "submit_url_api_videos_post",
         "requestBody": {
           "required": true,
           "content": {
@@ -42,7 +42,7 @@
       },
       "get": {
         "summary": "List Videos",
-        "operationId": "list_videos_videos_get",
+        "operationId": "list_videos_api_videos_get",
         "parameters": [
           {
             "name": "sort",
@@ -107,10 +107,10 @@
         }
       }
     },
-    "/videos/batch": {
+    "/api/videos/batch": {
       "post": {
         "summary": "Submit Urls",
-        "operationId": "submit_urls_videos_batch_post",
+        "operationId": "submit_urls_api_videos_batch_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -131,7 +131,7 @@
                     "$ref": "#/components/schemas/SubmitResult"
                   },
                   "type": "array",
-                  "title": "Response Submit Urls Videos Batch Post"
+                  "title": "Response Submit Urls Api Videos Batch Post"
                 }
               }
             }
@@ -149,10 +149,10 @@
         }
       }
     },
-    "/videos/{video_id}/retry": {
+    "/api/videos/{video_id}/retry": {
       "post": {
         "summary": "Retry Video",
-        "operationId": "retry_video_videos__video_id__retry_post",
+        "operationId": "retry_video_api_videos__video_id__retry_post",
         "parameters": [
           {
             "name": "video_id",
@@ -187,10 +187,10 @@
         }
       }
     },
-    "/videos/retry-failed": {
+    "/api/videos/retry-failed": {
       "post": {
         "summary": "Retry Failed Videos",
-        "operationId": "retry_failed_videos_videos_retry_failed_post",
+        "operationId": "retry_failed_videos_api_videos_retry_failed_post",
         "responses": {
           "202": {
             "description": "Successful Response",
@@ -203,10 +203,10 @@
         }
       }
     },
-    "/videos/{video_id}": {
+    "/api/videos/{video_id}": {
       "delete": {
         "summary": "Remove Video",
-        "operationId": "remove_video_videos__video_id__delete",
+        "operationId": "remove_video_api_videos__video_id__delete",
         "parameters": [
           {
             "name": "video_id",
@@ -236,10 +236,10 @@
         }
       }
     },
-    "/videos/queue": {
+    "/api/videos/queue": {
       "get": {
         "summary": "List Queue",
-        "operationId": "list_queue_videos_queue_get",
+        "operationId": "list_queue_api_videos_queue_get",
         "parameters": [
           {
             "name": "limit",

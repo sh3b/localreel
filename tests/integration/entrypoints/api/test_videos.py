@@ -16,7 +16,7 @@ class TestSubmitURL:
     def test_returns_202_and_persists_a_pending_video(
         self, client: TestClient, session: Session
     ) -> None:
-        response = client.post("/videos", json={"url": "https://youtu.be/jNQXAC9IVRw"})
+        response = client.post("/api/videos", json={"url": "https://youtu.be/jNQXAC9IVRw"})
 
         assert response.status_code == 202
         row = session.scalars(select(VideoORM)).one()
@@ -30,17 +30,17 @@ class TestSubmitURL:
             "https://youtu.be/jNQXAC9IVRw",
             "https://youtube.com/watch?v=jNQXAC9IVRw",
         ):
-            assert client.post("/videos", json={"url": url}).status_code == 202
+            assert client.post("/api/videos", json={"url": url}).status_code == 202
 
         assert len(session.scalars(select(VideoORM)).all()) == 1
 
     def test_losing_a_race_to_the_same_video_returns_202_and_keeps_one_row(
         self, client: TestClient, session: Session, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        client.post("/videos", json={"url": "https://youtu.be/jNQXAC9IVRw"})
+        client.post("/api/videos", json={"url": "https://youtu.be/jNQXAC9IVRw"})
         monkeypatch.setattr(PostgresVideoRepository, "exists", lambda *_, **__: False)
 
-        response = client.post("/videos", json={"url": "https://youtu.be/jNQXAC9IVRw"})
+        response = client.post("/api/videos", json={"url": "https://youtu.be/jNQXAC9IVRw"})
 
         assert response.status_code == 202
         assert len(session.scalars(select(VideoORM)).all()) == 1
@@ -48,7 +48,7 @@ class TestSubmitURL:
     def test_unsupported_source_returns_422_and_persists_nothing(
         self, client: TestClient, session: Session
     ) -> None:
-        response = client.post("/videos", json={"url": "https://vimeo.com/12345"})
+        response = client.post("/api/videos", json={"url": "https://vimeo.com/12345"})
 
         assert response.status_code == 422
         assert response.json() == {
@@ -67,7 +67,7 @@ class TestSubmitURLs:
             "https://youtu.be/dQw4w9WgXcQ",
         ]
 
-        response = client.post("/videos/batch", json={"urls": urls})
+        response = client.post("/api/videos/batch", json={"urls": urls})
 
         assert response.status_code == 200
         results = response.json()
@@ -83,10 +83,10 @@ class TestSubmitURLs:
         removed = VideoFactory.build(source_url="https://youtu.be/jNQXAC9IVRw")
         PostgresVideoRepository(session).add(removed)
         session.commit()
-        client.delete(f"/videos/{removed.id}")
+        client.delete(f"/api/videos/{removed.id}")
 
         response = client.post(
-            "/videos/batch", json={"urls": ["https://youtu.be/jNQXAC9IVRw"]}
+            "/api/videos/batch", json={"urls": ["https://youtu.be/jNQXAC9IVRw"]}
         )
 
         [result] = response.json()
@@ -122,7 +122,7 @@ class TestSubmitURLs:
         session.commit()
 
         response = client.post(
-            "/videos/batch", json={"urls": ["https://youtu.be/jNQXAC9IVRw"]}
+            "/api/videos/batch", json={"urls": ["https://youtu.be/jNQXAC9IVRw"]}
         )
 
         [link] = response.json()
@@ -134,7 +134,7 @@ class TestSubmitURLs:
         self, client: TestClient, session: Session
     ) -> None:
         response = client.post(
-            "/videos/batch",
+            "/api/videos/batch",
             json={"urls": ["https://vimeo.com/12345", "https://youtu.be/jNQXAC9IVRw"]},
         )
 
@@ -158,7 +158,7 @@ class TestSubmitURLs:
         monkeypatch.setattr(PostgresVideoRepository, "exists", lambda *_, **__: False)
 
         response = client.post(
-            "/videos/batch",
+            "/api/videos/batch",
             json={
                 "urls": ["https://youtu.be/jNQXAC9IVRw", "https://youtu.be/dQw4w9WgXcQ"]
             },
@@ -179,7 +179,7 @@ class TestSubmitURLs:
     def test_rejects_a_batch_out_of_bounds(
         self, client: TestClient, session: Session, urls: list[str]
     ) -> None:
-        response = client.post("/videos/batch", json={"urls": urls})
+        response = client.post("/api/videos/batch", json={"urls": urls})
 
         assert response.status_code == 422
         assert session.scalars(select(VideoORM)).all() == []
@@ -197,7 +197,7 @@ class TestRetryVideo:
         repository.save(video)
         session.commit()
 
-        response = client.post(f"/videos/{video.id}/retry")
+        response = client.post(f"/api/videos/{video.id}/retry")
 
         assert response.status_code == 202
         session.expire_all()
@@ -206,7 +206,7 @@ class TestRetryVideo:
     def test_an_unknown_video_returns_404(self, client: TestClient) -> None:
         video_id = uuid7()
 
-        response = client.post(f"/videos/{video_id}/retry")
+        response = client.post(f"/api/videos/{video_id}/retry")
 
         assert response.status_code == 404
         assert response.json() == {"detail": f"Video {video_id} not found"}
@@ -218,7 +218,7 @@ class TestRetryVideo:
         PostgresVideoRepository(session).add(video)
         session.commit()
 
-        response = client.post(f"/videos/{video.id}/retry")
+        response = client.post(f"/api/videos/{video.id}/retry")
 
         assert response.status_code == 409
         assert response.json() == {
@@ -244,7 +244,7 @@ class TestRetryFailedVideos:
             repository.save(video)
         session.commit()
 
-        response = client.post("/videos/retry-failed")
+        response = client.post("/api/videos/retry-failed")
 
         assert response.status_code == 202
         session.expire_all()
@@ -272,14 +272,14 @@ class TestRetryFailedVideos:
             PostgresVideoRepository, "failed", lambda _: [retried.id, purged, failed.id]
         )
 
-        response = client.post("/videos/retry-failed")
+        response = client.post("/api/videos/retry-failed")
 
         assert response.status_code == 202
         session.expire_all()
         assert session.get_one(VideoORM, failed.id).status is VideoStatus.PENDING
 
     def test_returns_202_when_nothing_failed(self, client: TestClient) -> None:
-        response = client.post("/videos/retry-failed")
+        response = client.post("/api/videos/retry-failed")
 
         assert response.status_code == 202
 
@@ -296,7 +296,7 @@ class TestRemoveVideo:
         repository.save(video)
         session.commit()
 
-        response = client.delete(f"/videos/{video.id}")
+        response = client.delete(f"/api/videos/{video.id}")
 
         assert response.status_code == 204
         session.expire_all()
@@ -308,16 +308,16 @@ class TestRemoveVideo:
         video = VideoFactory.build()
         PostgresVideoRepository(session).add(video)
         session.commit()
-        client.delete(f"/videos/{video.id}")
+        client.delete(f"/api/videos/{video.id}")
 
-        response = client.delete(f"/videos/{video.id}")
+        response = client.delete(f"/api/videos/{video.id}")
 
         assert response.status_code == 204
 
     def test_an_unknown_video_returns_404(self, client: TestClient) -> None:
         video_id = uuid7()
 
-        response = client.delete(f"/videos/{video_id}")
+        response = client.delete(f"/api/videos/{video_id}")
 
         assert response.status_code == 404
         assert response.json() == {"detail": f"Video {video_id} not found"}
@@ -332,7 +332,7 @@ class TestRemoveVideo:
         repository.save(video)
         session.commit()
 
-        response = client.delete(f"/videos/{video.id}")
+        response = client.delete(f"/api/videos/{video.id}")
 
         assert response.status_code == 409
         assert response.json() == {
@@ -353,7 +353,7 @@ class TestListQueue:
         repository.save(video)
         session.commit()
 
-        response = client.get("/videos/queue")
+        response = client.get("/api/videos/queue")
 
         assert response.status_code == 200
         page = response.json()
@@ -367,7 +367,7 @@ class TestListQueue:
     def test_returns_an_empty_page_when_nothing_is_queued(
         self, client: TestClient
     ) -> None:
-        response = client.get("/videos/queue")
+        response = client.get("/api/videos/queue")
 
         assert response.status_code == 200
         assert response.json() == {
@@ -377,7 +377,7 @@ class TestListQueue:
 
     @pytest.mark.parametrize("limit", [0, 101])
     def test_rejects_a_limit_out_of_range(self, client: TestClient, limit: int) -> None:
-        response = client.get("/videos/queue", params={"limit": limit})
+        response = client.get("/api/videos/queue", params={"limit": limit})
 
         assert response.status_code == 422
 
@@ -388,7 +388,7 @@ class TestListVideos:
     ) -> None:
         video = self._ready(session, "https://youtu.be/jNQXAC9IVRw")
 
-        response = client.get("/videos")
+        response = client.get("/api/videos")
 
         assert response.status_code == 200
         page = response.json()
@@ -402,14 +402,14 @@ class TestListVideos:
     def test_returns_an_empty_page_without_ready_videos(
         self, client: TestClient
     ) -> None:
-        response = client.get("/videos")
+        response = client.get("/api/videos")
 
         assert response.status_code == 200
         assert response.json() == {"items": [], "next_cursor": None}
 
     @pytest.mark.parametrize("limit", [0, 101])
     def test_rejects_a_limit_out_of_range(self, client: TestClient, limit: int) -> None:
-        response = client.get("/videos", params={"limit": limit})
+        response = client.get("/api/videos", params={"limit": limit})
 
         assert response.status_code == 422
 
@@ -419,9 +419,9 @@ class TestListVideos:
         older = self._ready(session, "https://youtu.be/jNQXAC9IVRw")
         newer = self._ready(session, "https://youtu.be/dQw4w9WgXcQ")
 
-        first = client.get("/videos", params={"sort": "oldest", "limit": 1}).json()
+        first = client.get("/api/videos", params={"sort": "oldest", "limit": 1}).json()
         second = client.get(
-            "/videos",
+            "/api/videos",
             params={"sort": "oldest", "limit": 1, "after": first["next_cursor"]},
         ).json()
 
