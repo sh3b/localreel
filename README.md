@@ -34,8 +34,9 @@ worker starts.
 You need Docker with Compose v2, on amd64 or arm64.
 
 ```bash
-git clone https://github.com/sh3b/localreel.git && cd localreel
-cp .env.example .env
+mkdir localreel && cd localreel
+curl -fsSLO https://raw.githubusercontent.com/sh3b/localreel/main/docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/sh3b/localreel/main/.env.example -o .env
 ```
 
 Edit `.env`:
@@ -48,7 +49,7 @@ Edit `.env`:
 
 ```bash
 mkdir -p data/downloads    # or the DOWNLOADS_DIR you set
-docker compose up -d --build
+docker compose up -d
 ```
 
 Open `http://<your server>:8080`. Port 8080 taken? Set another one as
@@ -57,11 +58,13 @@ Open `http://<your server>:8080`. Port 8080 taken? Set another one as
 ## Update
 
 ```bash
-git pull
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
-The database is migrated on start.
+The database is migrated on start. The image is
+`ghcr.io/sh3b/localreel`: `latest` is the newest release, and a version such
+as `0.1` gets only its fixes.
 
 ## Your data
 

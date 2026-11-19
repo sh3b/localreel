@@ -16,7 +16,7 @@ services:
       retries: 10
 
   app:
-    build: .
+    image: ghcr.io/sh3b/localreel:latest
     restart: unless-stopped
     user: "${PUID}:${PGID}"
     ports:

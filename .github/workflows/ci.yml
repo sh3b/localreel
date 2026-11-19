@@ -61,17 +61,19 @@ jobs:
       - name: The generated API client matches the API
         run: make openapi && git diff --exit-code frontend/src/lib/api
 
-  # Installs it the way the README says and checks that it answers.
+  # Installs it the way the README says, with the image built from this code
+  # under the published name, and checks that it answers.
   image:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Start with docker compose
         run: |
+          docker build -t ghcr.io/sh3b/localreel:latest .
           cp .env.example .env
           sed -i "s/^PUID=.*/PUID=$(id -u)/; s/^PGID=.*/PGID=$(id -g)/" .env
           mkdir -p data/downloads
-          docker compose up -d --build --wait
+          docker compose up -d --wait
       - name: The UI, the API and its docs answer
         run: |
           for path in / /library /api/videos/queue /api/docs; do
