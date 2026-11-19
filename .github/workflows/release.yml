@@ -37,6 +37,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes
+      # A tag with a "-" (v0.1.0-rc.1) is a test version: a pre-release.
+      - run: |
+          flags=(--generate-notes)
+          [[ $GITHUB_REF_NAME == *-* ]] && flags+=(--prerelease)
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" "${flags[@]}"
         env:
           GH_TOKEN: ${{ github.token }}
