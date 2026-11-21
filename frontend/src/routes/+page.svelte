@@ -292,18 +292,14 @@
 						/>
 					{/key}
 					<!-- Phones always; fullscreen fades it out while playing untouched. -->
-					<VideoOverlay
-						{video}
-						{position}
-						class={[LAYOUT[layout].overlay, overlayIdle && 'opacity-0']}
-					>
+					<VideoOverlay {video} class={[LAYOUT[layout].overlay, overlayIdle && 'opacity-0']}>
 						{@render controls()}
 					</VideoOverlay>
 				</div>
 
 				{#if !fullscreen}
 					<aside class={['hidden shrink-0 flex-col gap-6 md:flex', LAYOUT[layout].details]}>
-						<VideoDetails {video} {position} />
+						<VideoDetails {video} />
 						{@render controls()}
 					</aside>
 				{/if}
