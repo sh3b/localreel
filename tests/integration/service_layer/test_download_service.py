@@ -58,6 +58,19 @@ class TestDownloadService:
         assert row.source_title == "Me at the zoo"
         assert downloader.discarded == []
 
+    def test_logs_a_download_as_it_starts(
+        self, container: Container, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        caplog.set_level(logging.INFO)
+        video_id = self._pending_video(container)
+
+        self._service(container, FakeDownloader()).download_next()
+
+        assert (
+            f"video {video_id} from https://youtu.be/jNQXAC9IVRw is downloading, "
+            "attempt 1"
+        ) in caplog.messages
+
     def test_a_refused_download_fails_the_video_with_a_one_line_log(
         self,
         container: Container,
@@ -76,6 +89,7 @@ class TestDownloadService:
         [record] = [r for r in caplog.records if r.levelno >= logging.WARNING]
         assert record.levelno == logging.WARNING
         assert record.exc_info is None
+        assert row.source_url in record.getMessage()
 
     def test_an_unexpected_error_fails_the_video_and_logs_its_traceback(
         self,
@@ -93,6 +107,7 @@ class TestDownloadService:
         [record] = [r for r in caplog.records if r.levelno >= logging.WARNING]
         assert record.levelno == logging.ERROR
         assert record.exc_info is not None
+        assert row.source_url in record.getMessage()
 
     def test_skips_a_video_another_worker_already_took(
         self,

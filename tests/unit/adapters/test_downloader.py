@@ -51,21 +51,67 @@ class TestYtDlpDownloader:
                 url="http://169.254.169.254/latest/meta-data", video_id=uuid7()
             )
 
-    def test_a_refusal_gives_the_reason_without_yt_dlp_prefixes(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        cause = ExtractorError(
-            "This video is unavailable", video_id="xxxxxxxxxx0", ie="youtube"
-        )
+    def _refused(
+        self, cause: ExtractorError, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> str:
         error = DownloadError(f"ERROR: {cause}", exc_info=(type(cause), cause, None))
         monkeypatch.setattr(YoutubeDL, "extract_info", _raise(error))
-
         with pytest.raises(DownloadFailed) as raised:
             YtDlpDownloader(tmp_path).download(
                 url="https://youtu.be/xxxxxxxxxx0", video_id=uuid7()
             )
+        return str(raised.value)
 
-        assert str(raised.value) == "This video is unavailable"
+    def test_a_refusal_keeps_the_site_and_its_id(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        cause = ExtractorError(
+            "This video is unavailable",
+            expected=True,
+            video_id="xxxxxxxxxx0",
+            ie="youtube",
+        )
+
+        reason = self._refused(cause, tmp_path, monkeypatch)
+
+        assert reason == "[youtube] xxxxxxxxxx0: This video is unavailable"
+
+    def test_a_refusal_yt_dlp_did_not_expect_leaves_out_its_bug_report_advice(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        cause = ExtractorError("Cannot parse data", video_id="1", ie="facebook")
+        assert "please report this issue" in str(cause)
+
+        reason = self._refused(cause, tmp_path, monkeypatch)
+
+        assert reason == "[facebook] 1: Cannot parse data"
+
+    def test_a_refusal_keeps_what_caused_it(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        cause = ExtractorError(
+            "Unable to download webpage",
+            expected=True,
+            cause=ConnectionResetError("reset by peer"),
+            video_id="xxxxxxxxxx0",
+            ie="youtube",
+        )
+
+        reason = self._refused(cause, tmp_path, monkeypatch)
+
+        assert reason == (
+            "[youtube] xxxxxxxxxx0: Unable to download webpage"
+            " (caused by ConnectionResetError('reset by peer'))"
+        )
+
+    def test_a_refusal_without_site_or_id_gives_the_reason_alone(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        cause = ExtractorError("Requested format is not available", expected=True)
+
+        reason = self._refused(cause, tmp_path, monkeypatch)
+
+        assert reason == "Requested format is not available"
 
     def test_a_failed_download_gives_the_message_without_error_prefix(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

@@ -34,12 +34,20 @@ class YtDlpDownloader(AbstractDownloader):
             try:
                 info = ydl.sanitize_info(ydl.extract_info(url, download=True))
             except DownloadError as exc:
-                # yt-dlp's message reads "ERROR: [youtube] <id>: <reason>"; the
-                # extractor's own error keeps the reason alone.
+                # yt-dlp's message reads "ERROR: [facebook] <id>: <reason>
+                # (caused by ...)", plus, for an error yt-dlp didn't expect,
+                # advice to report it as a bug. The reason keeps all of it but
+                # that advice.
                 reason = str(exc).removeprefix("ERROR: ")
                 cause = exc.exc_info[1] if exc.exc_info else None
                 if isinstance(cause, ExtractorError):
                     reason = cause.orig_msg
+                    if cause.video_id:
+                        reason = f"{cause.video_id}: {reason}"
+                    if cause.ie:
+                        reason = f"[{cause.ie}] {reason}"
+                    if cause.cause:
+                        reason = f"{reason} (caused by {cause.cause!r})"
                 raise DownloadFailed(reason) from exc
         return self._result(info)
 

@@ -35,6 +35,12 @@ class StartDownloadHandler:
     def __call__(self, cmd: StartDownload) -> None:
         video = self._uow.videos.get(cmd.video_id, lock=True)
         video.start_download()
+        logger.info(
+            "video %s from %s is downloading, attempt %s",
+            video.id,
+            video.source_url,
+            video.attempts,
+        )
 
 
 class ResetDownloadHandler:

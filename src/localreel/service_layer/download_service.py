@@ -71,10 +71,14 @@ class DownloadService:
         except DownloadFailed as exc:
             # Expected: the site refused the video (unavailable, private,
             # blocked). A traceback for it would only bury real errors.
-            logger.warning("download failed for video %s: %s", video_id, exc)
+            logger.warning(
+                "download failed for video %s from %s: %s", video_id, source_url, exc
+            )
             command = MarkFailed(video_id=video_id, reason=str(exc))
         except Exception as exc:
-            logger.exception("download failed for video %s", video_id)
+            logger.exception(
+                "download failed for video %s from %s", video_id, source_url
+            )
             command = MarkFailed(video_id=video_id, reason=str(exc))
         else:
             command = MarkReady(
