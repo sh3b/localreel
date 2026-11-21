@@ -12,7 +12,8 @@
 
 <div class="flex flex-col gap-3.5">
 	<!-- Clamped: a Facebook title is its whole caption, often paragraphs.
-	     Hovering shows all of it. -->
+	     With a mouse, hovering shows all of it; elsewhere it is on the
+	     original page. -->
 	<h1
 		title={video.title}
 		class="line-clamp-3 font-title text-xl leading-snug font-medium text-fg-strong"
