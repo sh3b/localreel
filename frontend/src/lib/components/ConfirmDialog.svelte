@@ -1,17 +1,20 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { primaryButton, secondaryButton } from '#lib/components/buttons.ts';
 
 	// Asks before something that can't be undone. Shown while it is rendered;
 	// Escape cancels. Cancel comes first, so it is the button that has focus.
+	// children: what it is about (a video's title), shown above the message.
 	type Props = {
 		title: string;
 		message: string;
 		confirmLabel: string;
 		onconfirm: () => void;
 		oncancel: () => void;
+		children?: Snippet;
 	};
 
-	let { title, message, confirmLabel, onconfirm, oncancel }: Props = $props();
+	let { title, message, confirmLabel, onconfirm, oncancel, children }: Props = $props();
 
 	let dialog = $state<HTMLDialogElement>();
 
@@ -39,6 +42,7 @@
 	class="m-auto max-w-sm border border-line-strong bg-surface p-5 text-fg backdrop:bg-scrim/70"
 >
 	<h2 id="confirm-title" class="font-title text-lg font-medium text-fg-strong">{title}</h2>
+	{@render children?.()}
 	<p class="mt-2 leading-relaxed text-muted">{message}</p>
 	<div class="mt-5 flex flex-wrap justify-end gap-3">
 		<button type="button" class={secondaryButton} onclick={oncancel}>cancel</button>

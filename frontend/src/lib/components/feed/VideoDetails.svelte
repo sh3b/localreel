@@ -1,42 +1,27 @@
 <script lang="ts">
 	import type { VideoCard } from '#lib/api/client.ts';
+	import ExternalLink from '#lib/components/ExternalLink.svelte';
+	import VideoTitle from '#lib/components/VideoTitle.svelte';
 	import { formatDate, formatDuration, webPageUrl } from '#lib/videos/format.ts';
 
 	type Props = { video: VideoCard };
 
 	let { video }: Props = $props();
-
-	const sourceLink = $derived(webPageUrl(video.source_url));
-	const uploaderLink = $derived(webPageUrl(video.uploader_url));
 </script>
 
 <div class="flex flex-col gap-3.5">
-	<!-- Clamped: a Facebook title is its whole caption, often paragraphs.
-	     With a mouse, hovering shows all of it; elsewhere it is on the
-	     original page. -->
-	<h1
+	<VideoTitle
 		title={video.title}
-		class="line-clamp-3 font-title text-xl leading-snug font-medium text-fg-strong"
-	>
-		{video.title ?? 'Untitled video'}
-	</h1>
+		lines={3}
+		as="h1"
+		hover
+		class="font-title text-xl leading-snug font-medium text-fg-strong"
+	/>
 	<dl class="grid grid-cols-[4.5rem_1fr] gap-x-3 gap-y-1.5 leading-relaxed text-muted">
 		{#if video.uploader}
 			<dt>by</dt>
 			<dd class="text-fg">
-				{#if uploaderLink}
-					<!-- eslint-disable svelte/no-navigation-without-resolve -->
-					<a
-						href={uploaderLink}
-						target="_blank"
-						rel="noreferrer"
-						class="underline decoration-line-strong underline-offset-4 hover:decoration-accent"
-						>{video.uploader}</a
-					>
-					<!-- eslint-enable svelte/no-navigation-without-resolve -->
-				{:else}
-					{video.uploader}
-				{/if}
+				<ExternalLink href={video.uploader_url}>{video.uploader}</ExternalLink>
 			</dd>
 		{/if}
 		{#if video.duration_sec !== null}
@@ -45,19 +30,11 @@
 		{/if}
 		<dt>saved</dt>
 		<dd class="text-fg">{formatDate(video.saved_at)}</dd>
-		{#if sourceLink}
+		<!-- No source row without a link: "open original" as plain text means nothing. -->
+		{#if webPageUrl(video.source_url)}
 			<dt>source</dt>
-			<dd>
-				<!-- An external page, so SvelteKit's resolve() does not apply. -->
-				<!-- eslint-disable svelte/no-navigation-without-resolve -->
-				<a
-					href={sourceLink}
-					target="_blank"
-					rel="noreferrer"
-					class="text-fg underline decoration-line-strong underline-offset-4 hover:decoration-accent"
-					>open original</a
-				>
-				<!-- eslint-enable svelte/no-navigation-without-resolve -->
+			<dd class="text-fg">
+				<ExternalLink href={video.source_url}>open original</ExternalLink>
 			</dd>
 		{/if}
 	</dl>

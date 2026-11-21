@@ -2,12 +2,13 @@
 	import { onMount, tick } from 'svelte';
 	import type { VideoCard, VideoSort } from '#lib/api/client.ts';
 	import { controlButton, primaryButton } from '#lib/components/buttons.ts';
-	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import SortSwitch from '#lib/components/library/SortSwitch.svelte';
 	import TileContent from '#lib/components/library/TileContent.svelte';
+	import RemoveVideoDialog from '#lib/components/RemoveVideoDialog.svelte';
 	import StatePanel from '#lib/components/StatePanel.svelte';
 	import { isTyping } from '#lib/shell/keyboard.ts';
 	import { shell } from '#lib/shell/shell.svelte.ts';
+	import { titleOf } from '#lib/videos/format.ts';
 	import { gridMove } from '#lib/videos/grid.ts';
 	import { stream } from '#lib/videos/stream.svelte.ts';
 	import { goto } from '$app/navigation';
@@ -169,7 +170,7 @@
 							tabindex={index === focused ? 0 : -1}
 							onclick={() => open(index)}
 							onfocus={() => (focused = index)}
-							aria-label="Play {video.title ?? 'video'} in the feed"
+							aria-label="Play {titleOf(video.title)} in the feed"
 							class="block w-full outline-offset-2"
 						>
 							<TileContent {video} />
@@ -180,7 +181,7 @@
 							tabindex="-1"
 							disabled={stream.removing}
 							onclick={() => (confirming = video)}
-							aria-label="Remove {video.title ?? 'video'}"
+							aria-label="Remove {titleOf(video.title)}"
 							class="min-h-6 self-end px-1 text-caption text-faint hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							remove
@@ -204,11 +205,8 @@
 </div>
 
 {#if confirming}
-	<ConfirmDialog
-		title="Remove this video?"
-		message="“{confirming.title ??
-			'Untitled video'}” and its file are deleted from this server. This can't be undone."
-		confirmLabel="remove"
+	<RemoveVideoDialog
+		video={confirming}
 		onconfirm={() => confirming && removeConfirmed(confirming.id)}
 		oncancel={() => (confirming = null)}
 	/>

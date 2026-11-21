@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { VideoCard } from '#lib/api/client.ts';
+	import VideoTitle from '#lib/components/VideoTitle.svelte';
 	import { formatDuration, shapeOf } from '#lib/videos/format.ts';
 
 	// The inside of a Library tile. Tall for every video: wide ones are cropped
@@ -30,11 +31,11 @@
 			{formatDuration(video.duration_sec)}
 		</span>
 	{/if}
-	<!-- The clamp sits on an inner span: on the padded one, the third line
+	<!-- The clamp sits on an inner element: on the padded one, the third line
 	     showed through the bottom padding. -->
 	<span
 		class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-scrim/90 to-transparent px-2 pt-7 pb-1.5 text-left text-caption leading-tight text-on-media"
 	>
-		<span class="line-clamp-2">{video.title ?? 'Untitled video'}</span>
+		<VideoTitle title={video.title} lines={2} as="span" />
 	</span>
 </span>

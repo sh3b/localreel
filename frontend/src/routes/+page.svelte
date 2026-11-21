@@ -2,12 +2,12 @@
 	import { onMount } from 'svelte';
 	import type { VideoCard } from '#lib/api/client.ts';
 	import { controlButton, primaryButton, secondaryButton } from '#lib/components/buttons.ts';
-	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import FeedVideo from '#lib/components/feed/FeedVideo.svelte';
 	import Filmstrip from '#lib/components/feed/Filmstrip.svelte';
 	import PlayerControls from '#lib/components/feed/PlayerControls.svelte';
 	import VideoDetails from '#lib/components/feed/VideoDetails.svelte';
 	import VideoOverlay from '#lib/components/feed/VideoOverlay.svelte';
+	import RemoveVideoDialog from '#lib/components/RemoveVideoDialog.svelte';
 	import StatePanel from '#lib/components/StatePanel.svelte';
 	import { isTyping } from '#lib/shell/keyboard.ts';
 	import { shell } from '#lib/shell/shell.svelte.ts';
@@ -318,11 +318,8 @@
 {/if}
 
 {#if confirming}
-	<ConfirmDialog
-		title="Remove this video?"
-		message="“{confirming.title ??
-			'Untitled video'}” and its file are deleted from this server. This can't be undone."
-		confirmLabel="remove"
+	<RemoveVideoDialog
+		video={confirming}
 		onconfirm={() => confirming && removeConfirmed(confirming.id)}
 		oncancel={() => (confirming = null)}
 	/>

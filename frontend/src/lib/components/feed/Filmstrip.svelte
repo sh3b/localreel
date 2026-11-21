@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { VideoCard } from '#lib/api/client.ts';
+	import { titleOf } from '#lib/videos/format.ts';
 
 	type Props = { items: VideoCard[]; position: number; onpick: (index: number) => void };
 
@@ -20,7 +21,7 @@
 			type="button"
 			onclick={() => onpick(index)}
 			aria-current={current ? 'true' : undefined}
-			aria-label="Play {video.title ?? 'video'}"
+			aria-label="Play {titleOf(video.title)}"
 			class={[
 				'relative aspect-[3/4] w-full shrink-0 overflow-hidden bg-surface',
 				current ? 'outline-2 -outline-offset-2 outline-accent' : 'opacity-55 hover:opacity-90'

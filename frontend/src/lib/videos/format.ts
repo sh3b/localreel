@@ -36,3 +36,9 @@ export function formatDate(iso: string): string {
 export function webPageUrl(url: string | null): string | null {
 	return url && /^https?:\/\//i.test(url) ? url : null;
 }
+
+// What a video is called wherever it shows: its title, or this when it has
+// none. Only through here, so every place says the same.
+export function titleOf(title: string | null): string {
+	return title ?? 'Untitled video';
+}

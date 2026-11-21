@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatDuration, shapeOf, webPageUrl } from './format.ts';
+import { formatDate, formatDuration, shapeOf, titleOf, webPageUrl } from './format.ts';
 
 describe('shapeOf', () => {
 	it('tells portrait, landscape and square apart', () => {
@@ -45,5 +45,15 @@ describe('webPageUrl', () => {
 		expect(webPageUrl(' https://example.com')).toBeNull();
 		expect(webPageUrl('')).toBeNull();
 		expect(webPageUrl(null)).toBeNull();
+	});
+});
+
+describe('titleOf', () => {
+	it('is the title when there is one', () => {
+		expect(titleOf('My chopsticks trick')).toBe('My chopsticks trick');
+	});
+
+	it('names a video without a title', () => {
+		expect(titleOf(null)).toBe('Untitled video');
 	});
 });
