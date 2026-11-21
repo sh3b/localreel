@@ -17,6 +17,7 @@ class VideoCard(BaseModel):
     id: UUID
     title: str | None
     uploader: str | None
+    uploader_url: str | None
     duration_sec: int | None
     width: int | None
     height: int | None

@@ -53,6 +53,7 @@ class VideoORM(Base):
     source_title: Mapped[str | None] = mapped_column(Text)
     source_description: Mapped[str | None] = mapped_column(Text)
     source_uploader: Mapped[str | None] = mapped_column(Text)
+    source_uploader_url: Mapped[str | None] = mapped_column(Text)
     source_view_count: Mapped[int | None] = mapped_column(BigInteger)
     source_duration_sec: Mapped[int | None] = mapped_column(Integer)
     source_width: Mapped[int | None] = mapped_column(Integer)

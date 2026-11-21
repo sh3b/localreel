@@ -201,6 +201,8 @@ export interface components {
 			title: string | null;
 			/** Uploader */
 			uploader: string | null;
+			/** Uploader Url */
+			uploader_url: string | null;
 			/** Duration Sec */
 			duration_sec: number | null;
 			/** Width */

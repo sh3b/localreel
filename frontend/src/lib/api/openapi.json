@@ -532,6 +532,17 @@
             ],
             "title": "Uploader"
           },
+          "uploader_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploader Url"
+          },
           "duration_sec": {
             "anyOf": [
               {
@@ -598,6 +609,7 @@
           "id",
           "title",
           "uploader",
+          "uploader_url",
           "duration_sec",
           "width",
           "height",

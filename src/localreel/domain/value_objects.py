@@ -100,6 +100,7 @@ class SourceMetadata:
     title: str | None
     description: str | None
     uploader: str | None
+    uploader_url: str | None
     view_count: int | None
     duration_sec: int | None
     width: int | None

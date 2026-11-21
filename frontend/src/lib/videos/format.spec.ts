@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatDuration, formatPosition, shapeOf } from './format.ts';
+import { formatDate, formatDuration, formatPosition, shapeOf, webPageUrl } from './format.ts';
 
 describe('shapeOf', () => {
 	it('tells portrait, landscape and square apart', () => {
@@ -38,5 +38,20 @@ describe('formatPosition', () => {
 		expect(formatPosition(2, 27, false)).toBe('3/27+');
 		expect(formatPosition(26, 27, true)).toBe('27/27');
 		expect(formatPosition(0, 0, true)).toBe('0/0');
+	});
+});
+
+describe('webPageUrl', () => {
+	it('keeps http and https links', () => {
+		expect(webPageUrl('https://www.youtube.com/@jawed')).toBe('https://www.youtube.com/@jawed');
+		expect(webPageUrl('HTTP://example.com')).toBe('HTTP://example.com');
+	});
+
+	it('drops anything that is not a web page', () => {
+		expect(webPageUrl('javascript:alert(1)')).toBeNull();
+		expect(webPageUrl('data:text/html,<script>alert(1)</script>')).toBeNull();
+		expect(webPageUrl(' https://example.com')).toBeNull();
+		expect(webPageUrl('')).toBeNull();
+		expect(webPageUrl(null)).toBeNull();
 	});
 });

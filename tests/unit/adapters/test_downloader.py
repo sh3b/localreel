@@ -210,6 +210,41 @@ class TestDownloadResult:
         assert "automatic_captions" not in raw
         assert "requested_downloads" not in raw
 
+    def test_uploader_url_is_the_one_yt_dlp_gave(self) -> None:
+        result = self._result(
+            uploader_url="https://www.youtube.com/@jawed",
+            channel_url="https://www.youtube.com/channel/UC4QobU6",
+        )
+
+        assert result.metadata.uploader_url == "https://www.youtube.com/@jawed"
+
+    def test_uploader_url_falls_back_to_the_channel_url(self) -> None:
+        result = self._result(channel_url="https://www.youtube.com/channel/UC4QobU6")
+
+        assert result.metadata.uploader_url == (
+            "https://www.youtube.com/channel/UC4QobU6"
+        )
+
+    def test_a_facebook_uploader_is_linked_by_their_id(self) -> None:
+        result = self._result(extractor_key="Facebook", uploader_id="61575450508225")
+
+        assert result.metadata.uploader_url == "https://www.facebook.com/61575450508225"
+
+    def test_empty_links_from_yt_dlp_count_as_none(self) -> None:
+        result = self._result(
+            extractor_key="Facebook",
+            uploader_url="",
+            channel_url="",
+            uploader_id="61575450508225",
+        )
+
+        assert result.metadata.uploader_url == "https://www.facebook.com/61575450508225"
+
+    def test_other_sites_get_no_link_from_an_id(self) -> None:
+        result = self._result(extractor_key="Youtube", uploader_id="61575450508225")
+
+        assert result.metadata.uploader_url is None
+
     def test_tolerates_missing_fields(self) -> None:
         info = {
             "id": "x",
@@ -219,6 +254,7 @@ class TestDownloadResult:
         result = YtDlpDownloader(Path("/downloads"))._result(info)
 
         assert result.metadata.title is None
+        assert result.metadata.uploader_url is None
         assert result.metadata.duration_sec is None
         assert (result.metadata.width, result.metadata.height) == (None, None)
         assert result.thumbnail_path is None

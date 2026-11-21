@@ -33,6 +33,7 @@ class SourceMetadataFactory(factory.Factory[SourceMetadata]):
     title = "Me at the zoo"
     description = "The first video on YouTube."
     uploader = "jawed"
+    uploader_url = "https://www.youtube.com/@jawed"
     view_count = 448473011
     duration_sec = 19
     width = 320

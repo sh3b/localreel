@@ -22,6 +22,7 @@ class TestListVideos:
         assert card.id == video.id
         assert card.title == "Me at the zoo"
         assert card.uploader == "jawed"
+        assert card.uploader_url == "https://www.youtube.com/@jawed"
         assert card.duration_sec == 19
         assert (card.width, card.height) == (320, 240)
         assert card.source is VideoSource.YOUTUBE

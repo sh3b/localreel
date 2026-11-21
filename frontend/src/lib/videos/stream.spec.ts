@@ -7,6 +7,7 @@ function card(n: number): VideoCard {
 		id: `id-${n}`,
 		title: `Video ${n}`,
 		uploader: null,
+		uploader_url: null,
 		duration_sec: 10,
 		width: 1080,
 		height: 1920,

@@ -77,6 +77,13 @@ class YtDlpDownloader(AbstractDownloader):
             t["filepath"] for t in info.get("thumbnails", []) if t.get("filepath")
         ]
         duration = info.get("duration")
+        # yt-dlp may give an empty string. Facebook gives only the uploader's
+        # numeric id; facebook.com/<id> redirects to their page.
+        uploader_url = info.get("uploader_url") or info.get("channel_url") or None
+        uploader_id = info.get("uploader_id")
+        if uploader_url is None and info.get("extractor_key") == "Facebook":
+            if uploader_id:
+                uploader_url = f"https://www.facebook.com/{uploader_id}"
         return DownloadResult(
             file_path=self._relative(info["requested_downloads"][0]["filepath"]),
             thumbnail_path=self._relative(thumbnails[-1]) if thumbnails else None,
@@ -84,6 +91,7 @@ class YtDlpDownloader(AbstractDownloader):
                 title=info.get("title"),
                 description=info.get("description"),
                 uploader=info.get("uploader"),
+                uploader_url=uploader_url,
                 view_count=info.get("view_count"),
                 duration_sec=round(duration) if duration is not None else None,
                 width=info.get("width"),

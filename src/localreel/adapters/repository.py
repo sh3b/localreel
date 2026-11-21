@@ -98,6 +98,7 @@ class PostgresVideoRepository(AbstractVideoRepository):
                 title=row.source_title,
                 description=row.source_description,
                 uploader=row.source_uploader,
+                uploader_url=row.source_uploader_url,
                 view_count=row.source_view_count,
                 duration_sec=row.source_duration_sec,
                 width=row.source_width,
@@ -137,6 +138,7 @@ class PostgresVideoRepository(AbstractVideoRepository):
             row.source_title = metadata.title
             row.source_description = metadata.description
             row.source_uploader = metadata.uploader
+            row.source_uploader_url = metadata.uploader_url
             row.source_view_count = metadata.view_count
             row.source_duration_sec = metadata.duration_sec
             row.source_width = metadata.width
