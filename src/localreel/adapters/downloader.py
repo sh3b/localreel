@@ -77,8 +77,10 @@ class YtDlpDownloader(AbstractDownloader):
             t["filepath"] for t in info.get("thumbnails", []) if t.get("filepath")
         ]
         duration = info.get("duration")
-        # yt-dlp may give an empty string. Facebook gives only the uploader's
-        # numeric id; facebook.com/<id> redirects to their page.
+        # yt-dlp gives an empty string for a field the site left blank (an
+        # empty description, say); every text field saves it as None instead,
+        # so a missing value is always NULL. Facebook gives only the
+        # uploader's numeric id; facebook.com/<id> redirects to their page.
         uploader_url = info.get("uploader_url") or info.get("channel_url") or None
         uploader_id = info.get("uploader_id")
         if uploader_url is None and info.get("extractor_key") == "Facebook":
@@ -88,9 +90,9 @@ class YtDlpDownloader(AbstractDownloader):
             file_path=self._relative(info["requested_downloads"][0]["filepath"]),
             thumbnail_path=self._relative(thumbnails[-1]) if thumbnails else None,
             metadata=SourceMetadata(
-                title=info.get("title"),
-                description=info.get("description"),
-                uploader=info.get("uploader"),
+                title=info.get("title") or None,
+                description=info.get("description") or None,
+                uploader=info.get("uploader") or None,
                 uploader_url=uploader_url,
                 view_count=info.get("view_count"),
                 duration_sec=round(duration) if duration is not None else None,

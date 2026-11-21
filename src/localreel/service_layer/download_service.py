@@ -74,12 +74,16 @@ class DownloadService:
             logger.warning(
                 "download failed for video %s from %s: %s", video_id, source_url, exc
             )
-            command = MarkFailed(video_id=video_id, reason=str(exc))
+            command = MarkFailed(
+                video_id=video_id, reason=str(exc) or type(exc).__name__
+            )
         except Exception as exc:
             logger.exception(
                 "download failed for video %s from %s", video_id, source_url
             )
-            command = MarkFailed(video_id=video_id, reason=str(exc))
+            command = MarkFailed(
+                video_id=video_id, reason=str(exc) or type(exc).__name__
+            )
         else:
             command = MarkReady(
                 video_id=video_id,

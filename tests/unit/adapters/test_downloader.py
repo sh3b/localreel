@@ -245,6 +245,15 @@ class TestDownloadResult:
 
         assert result.metadata.uploader_url is None
 
+    def test_empty_text_from_yt_dlp_is_saved_as_none(self) -> None:
+        metadata = self._result(title="", description="", uploader="").metadata
+
+        assert (metadata.title, metadata.description, metadata.uploader) == (
+            None,
+            None,
+            None,
+        )
+
     def test_tolerates_missing_fields(self) -> None:
         info = {
             "id": "x",

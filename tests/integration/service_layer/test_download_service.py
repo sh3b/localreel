@@ -109,6 +109,16 @@ class TestDownloadService:
         assert record.exc_info is not None
         assert row.source_url in record.getMessage()
 
+    def test_an_error_without_a_message_is_saved_by_its_type(
+        self, container: Container, session: Session
+    ) -> None:
+        video_id = self._pending_video(container)
+        downloader = FakeDownloader(error=RuntimeError())
+
+        self._service(container, downloader).download_next()
+
+        assert session.get_one(VideoORM, video_id).error == "RuntimeError"
+
     def test_skips_a_video_another_worker_already_took(
         self,
         container: Container,
