@@ -30,9 +30,11 @@
 			{formatDuration(video.duration_sec)}
 		</span>
 	{/if}
+	<!-- The clamp sits on an inner span: on the padded one, the third line
+	     showed through the bottom padding. -->
 	<span
-		class="absolute inset-x-0 bottom-0 line-clamp-2 bg-gradient-to-t from-scrim/90 to-transparent px-2 pt-7 pb-1.5 text-left text-caption leading-tight text-on-media"
+		class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-scrim/90 to-transparent px-2 pt-7 pb-1.5 text-left text-caption leading-tight text-on-media"
 	>
-		{video.title ?? 'Untitled video'}
+		<span class="line-clamp-2">{video.title ?? 'Untitled video'}</span>
 	</span>
 </span>
