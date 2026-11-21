@@ -6,9 +6,9 @@
 
 	// The details drawn over the picture: on phones, and in fullscreen. On a
 	// wider page they sit beside the video instead (VideoDetails).
-	type Props = { video: VideoCard; position: string; class?: ClassValue; children: Snippet };
+	type Props = { video: VideoCard; class?: ClassValue; children: Snippet };
 
-	let { video, position, class: extra, children }: Props = $props();
+	let { video, class: extra, children }: Props = $props();
 </script>
 
 <div
@@ -17,8 +17,10 @@
 		extra
 	]}
 >
-	<p class="text-media-accent">{position}</p>
-	<p class="font-title text-lg leading-snug font-medium">{video.title ?? 'Untitled video'}</p>
+	<!-- Clamped: a Facebook title is its whole caption, often paragraphs. -->
+	<p class="line-clamp-3 font-title text-lg leading-snug font-medium">
+		{video.title ?? 'Untitled video'}
+	</p>
 	<p class="text-on-media-muted">
 		{[video.uploader, formatDuration(video.duration_sec)].filter(Boolean).join(', ')}
 	</p>
