@@ -2,17 +2,22 @@
 	import type { VideoCard } from '#lib/api/client.ts';
 	import { formatDate, formatDuration, webPageUrl } from '#lib/videos/format.ts';
 
-	type Props = { video: VideoCard; position: string };
+	type Props = { video: VideoCard };
 
-	let { video, position }: Props = $props();
+	let { video }: Props = $props();
 
 	const sourceLink = $derived(webPageUrl(video.source_url));
 	const uploaderLink = $derived(webPageUrl(video.uploader_url));
 </script>
 
 <div class="flex flex-col gap-3.5">
-	<p class="text-accent">{position}</p>
-	<h1 class="font-title text-xl leading-snug font-medium text-fg-strong">
+	<!-- Clamped: a Facebook title is its whole caption, often paragraphs.
+	     With a mouse, hovering shows all of it; elsewhere it is on the
+	     original page. -->
+	<h1
+		title={video.title}
+		class="line-clamp-3 font-title text-xl leading-snug font-medium text-fg-strong"
+	>
 		{video.title ?? 'Untitled video'}
 	</h1>
 	<dl class="grid grid-cols-[4.5rem_1fr] gap-x-3 gap-y-1.5 leading-relaxed text-muted">

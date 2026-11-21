@@ -11,7 +11,7 @@
 	import StatePanel from '#lib/components/StatePanel.svelte';
 	import { isTyping } from '#lib/shell/keyboard.ts';
 	import { shell } from '#lib/shell/shell.svelte.ts';
-	import { formatPosition, shapeOf } from '#lib/videos/format.ts';
+	import { shapeOf } from '#lib/videos/format.ts';
 	import { readSoundOn, saveSoundOn } from '#lib/videos/sound.ts';
 	import { stream } from '#lib/videos/stream.svelte.ts';
 	import { resolve } from '$app/paths';
@@ -33,7 +33,6 @@
 
 	const video = $derived(stream.current);
 	const shape = $derived(video ? shapeOf(video.width, video.height) : 'portrait');
-	const position = $derived(formatPosition(stream.position, stream.items.length, stream.complete));
 
 	// How the stage is arranged. Fullscreen: the video fills the screen with the
 	// details over it. Otherwise, from tablet width up, an upright (portrait or
@@ -76,12 +75,7 @@
 			clearTimeout(hideTimer);
 			clearTimeout(wheelQuiet);
 			shell.hints = [];
-			shell.status = '';
 		};
-	});
-
-	$effect(() => {
-		shell.status = stream.items.length > 0 ? `${position} ${stream.sort}` : '';
 	});
 
 	async function next() {
@@ -203,7 +197,7 @@
 
 {#if stream.items.length === 0}
 	{#if stream.loadFailed}
-		<StatePanel marker="00/00" title="The videos could not be loaded.">
+		<StatePanel title="The videos could not be loaded.">
 			The server did not answer. Check that it is running.
 			{#snippet actions()}
 				<button type="button" class={primaryButton} onclick={() => stream.restart(stream.sort)}>
@@ -212,10 +206,7 @@
 			{/snippet}
 		</StatePanel>
 	{:else if stream.complete}
-		<StatePanel
-			marker="00/00"
-			title="Nothing here yet. Paste a link and it will be kept on your own disk."
-		>
+		<StatePanel title="Nothing here yet. Paste a link and it will be kept on your own disk.">
 			Videos show up here once they are downloaded and ready to play.
 			{#snippet actions()}
 				<a href={resolve('/add')} class={primaryButton}><kbd>3</kbd> add videos</a>
@@ -225,7 +216,7 @@
 		<p class="flex h-full items-center justify-center text-faint">Loading videos…</p>
 	{/if}
 {:else if finished}
-	<StatePanel marker={position} title="You're all caught up.">
+	<StatePanel title="You're all caught up.">
 		That was the last of {stream.items.length} videos. Nothing repeats until you start again.
 		{#snippet actions()}
 			<button type="button" class={primaryButton} onclick={startOver}>
@@ -292,18 +283,14 @@
 						/>
 					{/key}
 					<!-- Phones always; fullscreen fades it out while playing untouched. -->
-					<VideoOverlay
-						{video}
-						{position}
-						class={[LAYOUT[layout].overlay, overlayIdle && 'opacity-0']}
-					>
+					<VideoOverlay {video} class={[LAYOUT[layout].overlay, overlayIdle && 'opacity-0']}>
 						{@render controls()}
 					</VideoOverlay>
 				</div>
 
 				{#if !fullscreen}
 					<aside class={['hidden shrink-0 flex-col gap-6 md:flex', LAYOUT[layout].details]}>
-						<VideoDetails {video} {position} />
+						<VideoDetails {video} />
 						{@render controls()}
 					</aside>
 				{/if}

@@ -30,12 +30,6 @@ export function formatDate(iso: string): string {
 	return dateFormat.format(new Date(iso));
 }
 
-// "3/27" while more can still load becomes "3/27+".
-export function formatPosition(index: number, loaded: number, complete: boolean): string {
-	if (loaded === 0) return '0/0';
-	return `${index + 1}/${loaded}${complete ? '' : '+'}`;
-}
-
 // Only ever link to a web page: a javascript: or data: URL in an href would run
 // in this site. Links come from users (the source) and from the video's site
 // through yt-dlp (the uploader).

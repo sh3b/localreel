@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatDuration, formatPosition, shapeOf, webPageUrl } from './format.ts';
+import { formatDate, formatDuration, shapeOf, webPageUrl } from './format.ts';
 
 describe('shapeOf', () => {
 	it('tells portrait, landscape and square apart', () => {
@@ -30,14 +30,6 @@ describe('formatDuration', () => {
 describe('formatDate', () => {
 	it('shows day, short month and year', () => {
 		expect(formatDate('2026-10-21T00:08:55.567Z')).toBe('21 Oct 2026');
-	});
-});
-
-describe('formatPosition', () => {
-	it('marks that more videos can still load', () => {
-		expect(formatPosition(2, 27, false)).toBe('3/27+');
-		expect(formatPosition(26, 27, true)).toBe('27/27');
-		expect(formatPosition(0, 0, true)).toBe('0/0');
 	});
 });
 
