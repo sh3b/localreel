@@ -2,8 +2,9 @@
 	import type { Snippet } from 'svelte';
 	import type { ClassValue } from 'svelte/elements';
 	import type { VideoCard } from '#lib/api/client.ts';
+	import ExternalLink from '#lib/components/ExternalLink.svelte';
 	import VideoTitle from '#lib/components/VideoTitle.svelte';
-	import { formatDuration } from '#lib/videos/format.ts';
+	import { formatDuration, webPageUrl } from '#lib/videos/format.ts';
 
 	// The details drawn over the picture: on phones, and in fullscreen. On a
 	// wider page they sit beside the video instead (VideoDetails).
@@ -19,8 +20,19 @@
 	]}
 >
 	<VideoTitle title={video.title} lines={3} class="font-title text-lg leading-snug font-medium" />
-	<p class="text-on-media-muted">
-		{[video.uploader, formatDuration(video.duration_sec)].filter(Boolean).join(', ')}
+	<!-- The links take taps; the rest of the overlay lets them through to the video. -->
+	<p class="flex flex-wrap gap-x-4 gap-y-1 wrap-anywhere text-on-media-muted">
+		{#if video.uploader}
+			<ExternalLink href={video.uploader_url} on="media" class="pointer-events-auto">
+				{video.uploader}
+			</ExternalLink>
+		{/if}
+		{#if video.duration_sec !== null}<span>{formatDuration(video.duration_sec)}</span>{/if}
+		{#if webPageUrl(video.source_url)}
+			<ExternalLink href={video.source_url} on="media" class="pointer-events-auto">
+				open original
+			</ExternalLink>
+		{/if}
 	</p>
 	<div class="pointer-events-auto">{@render children()}</div>
 </div>
