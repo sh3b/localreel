@@ -155,6 +155,8 @@
 				if (finished) startOver();
 			}
 		};
+		// Tab moves through the controls, so they show again first.
+		if (fullscreen && event.key === 'Tab') wake();
 		const action = actions[event.key];
 		if (!action || stream.items.length === 0) return;
 		event.preventDefault();
@@ -283,7 +285,10 @@
 						/>
 					{/key}
 					<!-- Phones always; fullscreen fades it out while playing untouched. -->
-					<VideoOverlay {video} class={[LAYOUT[layout].overlay, overlayIdle && 'opacity-0']}>
+					<VideoOverlay
+						{video}
+						class={[LAYOUT[layout].overlay, overlayIdle && 'opacity-0 [&_*]:pointer-events-none']}
+					>
 						{@render controls()}
 					</VideoOverlay>
 				</div>
