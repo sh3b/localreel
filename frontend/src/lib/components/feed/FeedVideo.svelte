@@ -73,7 +73,7 @@
 		class="h-full w-full cursor-pointer object-contain"
 	></video>
 
-	<div class="absolute inset-x-0 bottom-0 h-progress bg-on-media/20">
+	<div class="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-progress bg-on-media/20">
 		<div class="h-full bg-media-accent" style:width="{progress}%"></div>
 	</div>
 	<input
