@@ -41,7 +41,7 @@
 						active ? 'border-accent text-fg-strong' : 'border-transparent text-faint hover:text-fg'
 					]}
 				>
-					<span class="mr-1.5 text-faint">{item.key}</span>{item.label}
+					<kbd class="mr-1.5 text-faint">{item.key}</kbd>{item.label}
 				</a>
 			{/each}
 		</nav>
@@ -55,7 +55,7 @@
 
 	{#if shell.hints.length > 0}
 		<footer
-			class="hidden h-9 shrink-0 items-center gap-6 border-t border-line px-4 text-faint md:flex"
+			class="hidden h-9 shrink-0 items-center gap-6 border-t border-line px-4 text-faint md:keyboard:flex"
 			aria-label="Keyboard shortcuts"
 		>
 			{#each shell.hints as hint (hint.keys)}

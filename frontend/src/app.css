@@ -33,6 +33,11 @@
 	--spacing-tile: var(--lr-tile-gap);
 }
 
+/* A mouse or trackpad: the sign of a keyboard too. Without one (a phone, a
+   tablet on its own), the keys mean nothing, so they aren't shown. A tablet
+   with a keyboard but no trackpad loses them too; the shortcuts still work. */
+@custom-variant keyboard (@media (any-pointer: fine));
+
 @layer base {
 	html,
 	body {
@@ -51,6 +56,12 @@
 	:focus-visible {
 		outline: 2px solid var(--lr-accent);
 		outline-offset: 2px;
+	}
+
+	kbd {
+		@variant not-keyboard {
+			display: none;
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
