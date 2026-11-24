@@ -71,7 +71,7 @@
 				href={resolve(item.href)}
 				aria-current={active ? 'page' : undefined}
 				class={[
-					'flex items-center justify-center border-t-2 text-ui',
+					'flex items-center justify-center border-b-2 text-ui',
 					active ? 'border-accent text-accent' : 'border-transparent text-faint'
 				]}
 			>
